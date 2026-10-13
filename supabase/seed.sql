@@ -20,7 +20,7 @@ insert into auth.users (
   ('00000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'student.a1@campus.test', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Schüler A1"}', now(), now(), '', ''),
   ('00000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-0000000000a2', 'authenticated', 'authenticated', 'student.a2@campus.test', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Schüler A2"}', now(), now(), '', ''),
   ('00000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-0000000000b1', 'authenticated', 'authenticated', 'student.b1@campus.test', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Schüler B1"}', now(), now(), '', ''),
-  ('00000000-0000-0000-0000-000000000000', '40000000-0000-0000-0000-00000000000d', 'authenticated', 'authenticated', 'guardian.a1@campus.test', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Erziehungsberechtigte A1"}', now(), now(), '', '');
+  ('00000000-0000-0000-0000-000000000000', '40000000-0000-0000-0000-00000000000d', 'authenticated', 'authenticated', 'parent.a1@campus.test', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Elternteil A1"}', now(), now(), '', '');
 
 -- public.profiles rows are created automatically by the on_auth_user_created
 -- trigger (0006_rls_policies.sql).
@@ -33,28 +33,28 @@ insert into public.schools (id, name, status) values
 
 -- --- school_memberships ----------------------------------------------------
 
-insert into public.school_memberships (id, school_id, user_id, status) values
-  ('b0000000-0000-0000-0000-0000000a0a0a', 'a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-00000000000a', 'active'), -- Admin A
-  ('b0000000-0000-0000-0000-0000000b0b0b', 'a0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-00000000000b', 'active'), -- Admin B
-  ('b0000000-0000-0000-0000-000000cccccc', 'a0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'active'), -- Teacher A
-  ('b0000000-0000-0000-0000-0000000a1111', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-0000000000a1', 'active'), -- Student A1
-  ('b0000000-0000-0000-0000-0000000a2222', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-0000000000a2', 'active'), -- Student A2
-  ('b0000000-0000-0000-0000-0000000b1111', 'a0000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-0000000000b1', 'active'), -- Student B1
-  ('b0000000-0000-0000-0000-00000000d111', 'a0000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-00000000000d', 'active'); -- Guardian A1
+insert into public.school_memberships (id, school_id, user_id, status, joined_at) values
+  ('b0000000-0000-0000-0000-0000000a0a0a', 'a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-00000000000a', 'active', now()), -- Admin A
+  ('b0000000-0000-0000-0000-0000000b0b0b', 'a0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-00000000000b', 'active', now()), -- Admin B
+  ('b0000000-0000-0000-0000-000000cccccc', 'a0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'active', now()), -- Teacher A
+  ('b0000000-0000-0000-0000-0000000a1111', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-0000000000a1', 'active', now()), -- Student A1
+  ('b0000000-0000-0000-0000-0000000a2222', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-0000000000a2', 'active', now()), -- Student A2
+  ('b0000000-0000-0000-0000-0000000b1111', 'a0000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-0000000000b1', 'active', now()), -- Student B1
+  ('b0000000-0000-0000-0000-00000000d111', 'a0000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-00000000000d', 'active', now()); -- Parent A1
 
 -- --- role_assignments --------------------------------------------------
+-- (direct inserts here bypass fn_assign_role — fine for seed data, which
+-- runs as the table owner/superuser; real role changes always go through
+-- fn_assign_role/fn_revoke_role, see 0006_rls_policies.sql.)
 
-insert into public.role_assignments (membership_id, role_id, scope_school_id, membership_school_id)
-select m.id, r.id, m.school_id, m.school_id
-from public.school_memberships m
-join public.roles r on
-  (m.id = 'b0000000-0000-0000-0000-0000000a0a0a' and r.code = 'school_admin') or
-  (m.id = 'b0000000-0000-0000-0000-0000000b0b0b' and r.code = 'school_admin') or
-  (m.id = 'b0000000-0000-0000-0000-000000cccccc' and r.code = 'teacher') or
-  (m.id = 'b0000000-0000-0000-0000-0000000a1111' and r.code = 'student') or
-  (m.id = 'b0000000-0000-0000-0000-0000000a2222' and r.code = 'student') or
-  (m.id = 'b0000000-0000-0000-0000-0000000b1111' and r.code = 'student') or
-  (m.id = 'b0000000-0000-0000-0000-00000000d111' and r.code = 'guardian');
+insert into public.role_assignments (school_id, membership_id, role_code) values
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000a0a0a', 'school_admin'),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-0000000b0b0b', 'school_admin'),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000cccccc', 'teacher'),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000a1111', 'student'),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000a2222', 'student'),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-0000000b1111', 'student'),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-00000000d111', 'parent');
 
 -- --- academic structure (Schule A only, enough for smoke tests) -------------
 

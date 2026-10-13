@@ -28,6 +28,7 @@ create table public.classes (
   unique (school_year_id, name)
 );
 
+create unique index classes_id_school_id_key on public.classes (id, school_id);
 create index classes_school_id_idx on public.classes (school_id);
 
 create table public.subjects (
@@ -58,9 +59,6 @@ create index courses_school_id_idx on public.courses (school_id);
 
 create type public.course_participant_role as enum ('student', 'teacher');
 
--- Needed so the FK below can address a membership by (user_id, id).
-create unique index school_memberships_user_id_id_key on public.school_memberships (user_id, id);
-
 create table public.course_memberships (
   id uuid primary key default gen_random_uuid(),
   school_id uuid not null,
@@ -81,3 +79,28 @@ create table public.course_memberships (
 
 create index course_memberships_course_id_idx on public.course_memberships (course_id);
 create index course_memberships_user_id_idx on public.course_memberships (user_id);
+
+-- class_staff_assignments: Klassenleitung (IAM-009) — a class-scoped
+-- function assignment for an active teacher, NOT a school-wide role.
+-- Foundation only models the assignment type "class_leadership"; who may
+-- assign/revoke it (Schulleitung/Schuladmin/delegated Secretariat) is
+-- enforced by RLS + the admin Edge Functions in Phase F3, not by this
+-- table's shape alone.
+create type public.class_staff_assignment_type as enum ('class_leadership');
+
+create table public.class_staff_assignments (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid not null,
+  class_id uuid not null,
+  membership_id uuid not null,
+  assignment_type public.class_staff_assignment_type not null default 'class_leadership',
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,
+  foreign key (class_id, school_id) references public.classes (id, school_id),
+  foreign key (membership_id, school_id) references public.school_memberships (id, school_id)
+);
+
+create unique index class_staff_assignments_active_unique
+  on public.class_staff_assignments (class_id, membership_id, assignment_type)
+  where ended_at is null;
+create index class_staff_assignments_class_id_idx on public.class_staff_assignments (class_id);
