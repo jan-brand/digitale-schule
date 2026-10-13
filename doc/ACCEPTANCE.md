@@ -1,30 +1,43 @@
-# Campus Foundation v0.1 – Abnahme und Testplan
+# Campus – Abnahme und technische Gates
+Version 1.0 · Foundation v0.1.
 
-## Definition of Done
-Die App läuft lokal im Browser und als Expo-App auf mindestens einem Android- und einem iOS-Testziel (Simulator oder Gerät/Build); TypeScript Strict, Lint, Unit- und DB-Policy-Tests laufen in CI. Der Schulkontext und das Profil werden aus Supabase gelesen. Alle Kernbereiche verwenden das Campus-Purple-Theme inklusive Systemmodus und manueller Übersteuerung. Admin-Funktionen besitzen echte Backend-Autorisierung. Fehler- und Leerzustände sind sichtbar.
+## Gate 0: Repository & Entwicklungsbasis
+- [ ] Existing `doc/design.md`, Brief, ZIP gesichtet; Doku aktualisiert und widerspruchsfrei.
+- [ ] Expo Web/iOS/Android starten; TypeScript strict, Lint, Unit-Test und CI; kein Secret in Repo/Bundle.
+- [ ] Light/Dark/System-Theme mit Campus-Purple-Tokens, 12px Karten, 4px Spacing.
 
-## Szenarien (Given / When / Then)
-| ID | Given | When | Then |
-|---|---|---|---|
-| AC-01 | Gültiges Konto | Login | Sitzung aufgebaut; eigenes Profil sichtbar |
-| AC-02 | Zwei Mitgliedschaften | Schulwechsel | aktiver Kontext wechselt, Daten neu geladen |
-| AC-03 | Schüler A von Schule A | liest Schule B direkt über API | Zugriff abgelehnt/keine Zeilen |
-| AC-04 | Schüler A | ruft Admin-Edge-Function | 403; keine Änderung |
-| AC-05 | Schuladmin A | erstellt Klasse in A | Erfolg, Audit, richtige school_id |
-| AC-06 | Schuladmin A | erstellt Klasse in B | Verbot; keine Änderung |
-| AC-07 | Unberechtigter Client | versucht Rollenzuweisung | Verbot; keine Rechteerhöhung |
-| AC-08 | Authentifizierter Benutzer | meldet sich ab | geschützte Daten/Routen nicht mehr abrufbar |
-| AC-09 | Benutzer wählt Dark | App-Neustart | Auswahl aus Preferences wiederhergestellt |
-| AC-10 | Benutzer wählt System | OS-Theme wechselt | Oberfläche folgt OS-Theme |
-| AC-11 | Supabase nicht erreichbar | Datenzugriff | verständliche Fehlermeldung, kein falscher Erfolg |
-| AC-12 | Test-Migrationen | frischer DB-Reset | Schema/Policies reproduzierbar |
+## Gate 1: Unbekannte Auth-Machbarkeit (blockierend)
+- [ ] POC-01 Identität ohne reale E-Mail in Supabase Auth erstellt, ohne eigene Passwortspeicherung.
+- [ ] POC-02 Username-Login über schoolSlug, serverseitige Auflösung, Session-Restore und Refresh.
+- [ ] POC-03 gleicher Username an A/B -> unabhängige User-UUIDs, strikt isoliert.
+- [ ] POC-04 falscher Host/Slug -> kein Zugang und keine Enumeration.
+- [ ] POC-05 Nachträgliche echte E-Mail bestätigt und für Recovery nutzbar, ohne technischen Login zu zerstören.
+- [ ] POC-06 Lehrkraft kann Schülerreset über Einmalcode veranlassen, keinen Passwortwert einsehen.
+- [ ] POC-07 schulübergreifender Reset und Erwachsenenkonto-Reset abgelehnt.
+- [ ] POC-08 bereits ausgestellte Tokens nach Sperrung ermöglichen keine Fachzugriffe.
+- [ ] POC-09 Expo Web + native Session/Login/Recovery erfolgreich.
+- [ ] POC-10 PoC dokumentiert (API-Version, eingesetzter Provider, Limitationen, alternative Machbarkeitswege).
+- [ ] **Bei PoC-Fehlschlag: Architektur-Stopp, keine Annahme/freie Auth-Nachentwicklung.**
 
-## Testanforderungen
-- Unit: Theme-Resolver, Validation, Auth-State, School-Switch-Service.
-- Integration: authentifizierte und anonyme DB-Zugriffe, alle zentralen RLS-Policies, Fach-Constraints.
-- UI-Smoke: Login, Wechsel zwischen Foundation-Routen, Dark Mode.
-- CI: Installation mit Lockfile, lint, typecheck, Tests, Web-Build.
-- Dokumentierte manuelle Checks auf Android und iOS.
+## Gate 2: Mandantentrennung und IAM
+- [ ] Fiktive Schulen A/B und Schüler/Lehrkraft/Schulleitung/Admin/Secretariat.
+- [ ] A kann B nie lesen, ändern oder über FK referenzieren.
+- [ ] Manipulierte school_id, geschützte Tabelle, service-key Fehlgebrauch, Storage, Views, Functions getestet.
+- [ ] Normale UI/API kann Schulleitungsrolle nicht vergeben; CLI nur Operator.
+- [ ] Schuladmin-Ernennung nur mit Berechtigung, keine Selbstaufwertung, critical reason+audit atomar.
+- [ ] Letzter aktiver Schuladmin bleibt auch bei konkurrierenden Operationen erhalten.
+- [ ] Klassenleitung nur auf eigene zugewiesene Klassen; Sekretariat braucht explizites Recht.
 
-## Abgabe des Teams
-PR mit nachvollziehbaren Commits; README-Setup; `.env.example` ohne Geheimnisse; Migrationen; Seed-Daten (künstlich); Testausgabe; dokumentierte Einschränkungen; Screenshots der Web- und mobilen Foundation-Ansicht; keine Freigabe von Produktionssystemen durch den PR allein.
+## Gate 3: Funktionale Foundation
+- [ ] Einladung/CSV-Prüfung/Import ohne unzulässige Rechte und ohne Passwörter im CSV.
+- [ ] Username automatisch aus Namen, Duplikate behandelt; Änderung nur Administration.
+- [ ] Lehrkraft-Reset für Schüler derselben Schule (nicht für andere Rollen); Rate-Limit/Audit.
+- [ ] Profile, Schuljahre, Klassen, Fächer, Kurse, Module und Admin-Basis nutzbar.
+- [ ] Dashboard zeigt echte Daten und ehrliche Leerzustände; responsive und Screenreader-/Tastaturprüfung.
+- [ ] Migration aus leerer DB reproduzierbar, CI Staging erfolgreich; Backup/Restore-Konzept dokumentiert.
+
+## Gate 4: Produktivfreigabe separat
+- [ ] EU-/Hosting-/AVV-/Unterauftragnehmerprüfung, schulrechtliche Anforderungen, DSFA-Vorprüfung.
+- [ ] Datenschutz- und IT-Sicherheitsreview; Betriebskonzept, Rollback, Monitoring, Incident, Restore-Test.
+- [ ] Zugänglichkeit (WCAG 2.2 AA) gegen reale Screens kontrolliert.
+- [ ] Keine echten Minderjährigendaten vor Freigabe.

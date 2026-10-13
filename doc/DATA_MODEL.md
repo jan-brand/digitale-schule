@@ -1,47 +1,49 @@
-# Campus – Supabase-Datenmodell (Foundation)
+# Campus – Datenmodell und Datenbankvertrag Foundation v0.1
+Version 1.0 · Fachschema; DDL wird erst nach Auth-PoC endgültig eingefroren.
 
-## Grundprinzipien
-PostgreSQL ist die Source of Truth. `auth.users` gehört Supabase. Fachliche Tabellen werden über versionierte SQL-Migrationen angelegt. Schulbezogene Tabellen besitzen `school_id uuid not null` und zusammengesetzte FKs gegen schulzugehörige Datensätze, damit Cross-School-Referenzen auch bei fehlerhaftem Anwendungscode scheitern. UUIDs als Primärschlüssel; `timestamptz` für Ereignisse, `date` für Schultage.
+## Modell und Entitäten
+| Tabelle | Mindestfelder/Integritätsregel |
+|---|---|
+| `schools` | id UUID PK, slug CITEXT UNIQUE, name, status, created_at |
+| `profiles` | id UUID PK/FK auth.users, school_id NOT NULL, first_name, last_name, status, timestamps; UNIQUE (school_id,id); **UNIQUE(id)** gewährleistet Konto=Schule |
+| `login_identifiers` | school_id, profile_id UNIQUE, username_normalized CITEXT, UNIQUE(school_id,username_normalized); privates Schema, keinerlei Client SELECT; technische Auth-Zuordnung PoC-abhängig |
+| `school_memberships` | school_id, user_id UNIQUE, status [pending,active,suspended,ended], timestamps; UNIQUE(user_id), zusammengesetzte FK auf profiles; existiert als schulinterner Lifecycle-Datensatz |
+| `roles` | code, scope, system_managed; Standardrollen STUDENT, TEACHER, PARENT, SECRETARIAT, PRINCIPAL, SCHOOL_ADMIN |
+| `permissions` | code UNIQUE, sensitivity, delegation_class; katalogisiert |
+| `role_permissions` | role_id, permission_id; unveränderbare Kernvorlagen |
+| `role_assignments` | school_id, membership_id, role_id, granted_by, timestamps; keine Selbstvergabe |
+| `permission_grants` | school_id, membership_id, permission_id, granted_by, reason, revoked_at; dauerhaft bis Widerruf; kein beliebiges freies Recht |
+| `school_years` | school_id, name, start_date, end_date, status; UNIQUE(school_id,id) |
+| `classes` | school_id, school_year_id, name; zusammengesetzte FK zu school_years |
+| `subjects` | school_id, code, name; UNIQUE(school_id,code) |
+| `courses` | school_id, school_year_id, subject_id, name; zusammengesetzte FK |
+| `course_memberships` | school_id, course_id, membership_id, member_type; zusammengesetzte FK |
+| `class_staff_assignments` | school_id, class_id, membership_id, kind='lead'; Nutzer muss Lehrkraft derselben Schule sein |
+| `invitations` | school_id, subject_type, status, invitee info (minimal), expires_at, token_hash, invited_by, redeemed_at |
+| `password_reset_requests` | school_id, user_id, initiator_id, method, token_hash, expires_at, consumed_at; kein Klartextgeheimnis |
+| `import_jobs` | school_id, initiated_by, state, source_metadata, counts, timestamps; CSV-Rohdaten zeitnah löschen |
+| `import_job_rows` | job_id, row_number, validation_state, error_code, result_account_id; keine Passwörter |
+| `module_settings` | school_id, module_key, enabled; UNIQUE(school_id,module_key) |
+| `user_preferences` | school_id, profile_id, theme(system/light/dark), locale; UNIQUE(profile_id) |
+| `audit_events` | school_id, actor, target, event_key, reason, timestamp, sanitized metadata, correlation_id; eingeschränkter Zugriff |
 
-## Entitäten und Kardinalitäten
-| Tabelle | Kerndaten | Beziehung |
-|---|---|---|
-| `profiles` | id (FK auth.users), display_name | 1:1 Identität |
-| `organizations` | id, name, kind | Träger optional |
-| `schools` | id, organization_id?, name, status | Organisation 1:n Schulen |
-| `school_memberships` | id, school_id, user_id, status | Benutzer n:m Schule; UNIQUE(school_id,user_id) |
-| `roles` | id, code, description | feste Systemrollen; Codes unique |
-| `role_assignments` | id, membership_id, role_id, scope_type?, scope_id? | Mehrfachrollen, kontrollierte Scopes |
-| `school_years` | id, school_id, name, starts_on, ends_on | Schule 1:n Jahre |
-| `classes` | id, school_id, school_year_id, name | Klassen je Jahr; eindeutiger Name im Jahr |
-| `subjects` | id, school_id, name, code | Fächer je Schule |
-| `courses` | id, school_id, school_year_id, subject_id, name | Kurs je Jahr und Fach |
-| `course_memberships` | id, school_id, course_id, user_id, participant_role | Teilnehmende und Lehrkräfte |
-| `module_settings` | school_id, module_key, enabled, configuration | UNIQUE(school_id,module_key) |
-| `user_preferences` | user_id, school_id?, theme, dashboard_layout | personalisiert |
-| `audit_events` | id, school_id?, actor_user_id?, action, subject_type, subject_id, occurred_at | append-only, minimale Daten |
+## Sicherheitsinvarianten
+- `profiles.id` referenziert auth.users.id und hat genau eine school_id, nicht umschreibbar durch Client; `school_memberships.user_id UNIQUE`; jede abgeleitete Ressource referenziert dieselbe Schule.
+- Zusammengesetzte Foreign Keys `(school_id, related_id)` bei allen schulbezogenen Relationen. Dafür UNIQUE(school_id,id) auf den Zieltables.
+- Keine privilegierten Rollen in editierbarem `user_metadata`; Rollen und Rechte aus DB. Auch JWT-Custom-Claims dürfen ohne Aktualitätskontrolle nie alleine über Rechte entscheiden.
+- Default-deny für exponierte Tabellen: erforderliche `GRANT`s und RLS; interne sensible Tabellen in nicht exponiertem Schema, EXECUTE nur für ausgewählte Funktionen.
+- Rollenvergabe, Rechteänderung, Suspendierung und Reset nur über transaktionale geprüfte Serveroperationen; bei kritischen Mutationen Audit+Pflichtgrund atomar.
+- Letzten **aktiven** Schuladministrator durch Transaktion und Sperre vor konkurrierendem Rollenentzug oder Suspendierung schützen. Echter Sicherheitsnotfall via CLI separat.
+- Lehrer-Reset nur Zielrolle STUDENT, gleiche Schule, aktiver Lehrer; keine Offenlegung alter/neuer Passwörter.
+- Datenarchivierung/löschung nach Datenkategorie und landesrechtlich geprüftem Retention-Plan, kein unbegrenztes Soft-Delete.
 
-## Designentscheidungen
-- Rollen: student, teacher, guardian, principal, secretary, school_admin, school_authority, platform_operator. Im MVP nur Grundfunktionen der ersten vier Rollen; weitere vorbereitet.
-- `scope_type`/`scope_id` dürfen keine ungesicherten polymorphen Referenzen werden: für v0.1 vorerst nur Schulscope, erweiterte Scopes erst mit Integritäts- und Validierungsregeln.
-- Mitglieder müssen explizit eingeladen/zugeordnet werden; kein automatisches `school_admin` nach Signup.
-- Klassen-/Kursmitgliedschaften benötigen gleiche Schule und aktive Mitgliedschaft; erzwinge dies mit Constraints bzw. vertrauenswürdigen Serveroperationen.
-- Kein Noten-, Gesundheits- oder Eltern-Kind-Auskunftsmodell in v0.1.
-- Audit-Tabellen nicht frei editierbar, kein ungeprüfter direkt-clientseitiger INSERT.
-
-## Migration-Reihenfolge
-1. Extensions/Enums und Basistabellen.
-2. Relationen, UNIQUE/CHECK und zusammengesetzte FKs; zielgerichtete Indizes.
-3. RLS aktivieren und SQL-Grants minimieren.
-4. Policies/validierte Helper (ohne Rekursionsfallen und Rechteausweitung).
-5. Synthetische Seed-Factories und automatisierte RLS-Tests.
-6. Generierte TypeScript-Datenbanktypen aktualisieren.
-
-## Testmatrix – mindestens
-A = Schüler an Schule A; B = Schüler an Schule B; T = Lehrkraft Schule A; S = Admin Schule A.
-- A sieht eigenes Profil und eigene Schulzuordnung, nicht die von B.
-- A kann Schule-B-Daten weder SELECT, UPDATE noch INSERT ausführen.
-- T sieht nur zugewiesene Kurse, keine nicht zugewiesenen Klassen-/Kursinhalte.
-- S kann Admin-Funktion für A ausführen, nicht für B.
-- Anonyme Clients sehen keine privaten Fachdaten.
-- Bei Widerruf einer Mitgliedschaft entfällt Zugriff sofort auf neue Requests.
+## Indizes und Migrationen
+`school_id` + häufig benutzte Fremdschlüssel indizieren, einzigartiger normalisierter Benutzername `(school_id,username_normalized)`; Datenbank-Constraints statt App-only-Checks.
+1. M001 schools/profiles/memberships + RLS/Grants sofort.
+2. M002 Login-Identifier (erst nach PoC Auth-Schema fixieren).
+3. M003 Roles/permissions/assignments/grants + Admin Transaktionen.
+4. M004 Schuljahre/Klassen/Fächer/Kurse/Klassenleitung + FKs + RLS.
+5. M005 Einladungen, Recovery, CSV-Import + geschützte Funktionen.
+6. M006 Module, Preferences, Audit, Seed.
+7. M007 Sicherheits-Härtung, Integrationstests, Indizes.
+Jede Migration muss einzeln gegen frische lokale DB und negatives Zugriffsmodell testbar sein.
