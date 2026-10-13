@@ -8,13 +8,15 @@ export const palette = {
     background: "#F8F7FC",
     surface: "#FFFFFF",
     text: "#1A1028",
-    action: "#4C1D95",
+    action: "#4C1D95", // "Primary" in the dev brief; same color, kept as `action` here.
+    accent: "#F1EAFF",
   },
   dark: {
     background: "#120C1D",
     surface: "#1D152A",
     text: "#F7F3FF",
     action: "#A78BFA",
+    accent: "#302046",
   },
 } as const;
 

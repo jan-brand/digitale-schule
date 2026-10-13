@@ -7,17 +7,29 @@ Version 1.0 · Foundation v0.1.
 - [ ] Light/Dark/System-Theme mit Campus-Purple-Tokens, 12px Karten, 4px Spacing.
 
 ## Gate 1: Unbekannte Auth-Machbarkeit (blockierend)
-- [ ] POC-01 Identität ohne reale E-Mail in Supabase Auth erstellt, ohne eigene Passwortspeicherung.
-- [ ] POC-02 Username-Login über schoolSlug, serverseitige Auflösung, Session-Restore und Refresh.
-- [ ] POC-03 gleicher Username an A/B -> unabhängige User-UUIDs, strikt isoliert.
-- [ ] POC-04 falscher Host/Slug -> kein Zugang und keine Enumeration.
-- [ ] POC-05 Nachträgliche echte E-Mail bestätigt und für Recovery nutzbar, ohne technischen Login zu zerstören.
-- [ ] POC-06 Lehrkraft kann Schülerreset über Einmalcode veranlassen, keinen Passwortwert einsehen.
-- [ ] POC-07 schulübergreifender Reset und Erwachsenenkonto-Reset abgelehnt.
-- [ ] POC-08 bereits ausgestellte Tokens nach Sperrung ermöglichen keine Fachzugriffe.
-- [ ] POC-09 Expo Web + native Session/Login/Recovery erfolgreich.
-- [ ] POC-10 PoC dokumentiert (API-Version, eingesetzter Provider, Limitationen, alternative Machbarkeitswege).
-- [ ] **Bei PoC-Fehlschlag: Architektur-Stopp, keine Annahme/freie Auth-Nachentwicklung.**
+
+**Ergebnis: PoC bestanden.** Live gegen die echte Instanz verifiziert
+(GoTrue v2.197.0, über SSH-Tunnel, mit synthetischen, am Ende wieder
+gelöschten Testkonten — kein Produktivkonto berührt). Details,
+Testskripte und Rohausgaben: siehe Commit-Historie ab
+`20261014150001_auth_poc_foundations.sql`. Muster: synthetische
+"technische" E-Mail (`u-<uuid>@accounts.campus.internal`) als
+`auth.users.email`, serverseitig aus `(schoolSlug, username)` aufgelöst
+über eine private `internal.login_identifiers`-Tabelle (nicht über die
+Data API erreichbar), tatsächliche Passwortprüfung bleibt vollständig bei
+Supabase Auth.
+
+- [x] POC-01 Identität ohne reale E-Mail in Supabase Auth erstellt, ohne eigene Passwortspeicherung. — live verifiziert (`admin/users` mit synthetischer E-Mail, `email_confirm:true`, kein eigener Passwort-Hash berührt).
+- [x] POC-02 Username-Login über schoolSlug, serverseitige Auflösung, Session-Restore und Refresh. — live verifiziert (Login über aufgelöste technische E-Mail liefert echte Supabase-Session; `grant_type=refresh_token` liefert neuen Access Token).
+- [x] POC-03 gleicher Username an A/B -> unabhängige User-UUIDs, strikt isoliert. — live verifiziert (identischer Username "mmueller" in zwei Schulen, zwei unabhängige Auth-UUIDs, Login mit Schule-B-Zugangsdaten löst ausschließlich zu Schule B auf).
+- [x] POC-04 falscher Host/Slug -> kein Zugang und keine Enumeration. — live verifiziert (falsches Passwort und nicht existierendes Konto liefern identischen generischen Fehler, gleicher HTTP-Status, gleicher `error_code`).
+- [ ] POC-05 Nachträgliche echte E-Mail bestätigt und für Recovery nutzbar, ohne technischen Login zu zerstören. — **nur als Architekturentscheidung geprüft, nicht als Code gebaut**: echte Kontakt-E-Mail muss getrennt von `auth.users.email` gespeichert/verifiziert werden (eigener Flow, nicht Supabases native E-Mail-Änderung), da diese sonst den technischen Login-Identifier zerstören würde. Bauen folgt mit M5.
+- [ ] POC-06 Lehrkraft kann Schülerreset über Einmalcode veranlassen, keinen Passwortwert einsehen. — Kernmechanik live verifiziert (Admin-API kann Passwort setzen, altes Passwort und alter Refresh-Token werden sofort ungültig), **aber** der Einmalcode-Ausstellungs-/Einlöse-Workflow selbst (Lehrkraft-UI, Rollenprüfung, `password_reset_requests`-Tabelle) ist noch nicht gebaut — M5.
+- [ ] POC-07 schulübergreifender Reset und Erwachsenenkonto-Reset abgelehnt. — hängt am noch zu bauenden M5-Workflow; die zugrunde liegende RLS-/Rollenprüfung (Lehrkraft nur eigene Schule) existiert bereits und wurde isoliert getestet (`supabase/tests/database/001-rls-isolation.sql`), aber noch nicht im Reset-Kontext selbst.
+- [x] POC-08 bereits ausgestellte Tokens nach Sperrung ermöglichen keine Fachzugriffe. — live verifiziert, zwei Wege: `ban_duration` sperrt sofort (`refresh_token` danach: `user_banned`); ein Passwort-Reset invalidiert den alten `refresh_token` ebenfalls automatisch (`refresh_token_not_found`), ohne dass das explizit angefordert wurde — GoTrue-Standardverhalten.
+- [ ] POC-09 Expo Web + native Session/Login/Recovery erfolgreich. — Login/Session-Restore/Logout sind als echter Code vorhanden (`src/providers/AuthProvider.tsx`, `src/app/(auth)/login.tsx`) und bestehen `typecheck`/`lint`/`expo export --platform web`; **nicht** in einem laufenden Web-/Native-Build tatsächlich durchgeklickt (keine Browser-/Simulator-Umgebung in dieser Sitzung).
+- [x] POC-10 PoC dokumentiert (API-Version, eingesetzter Provider, Limitationen, alternative Machbarkeitswege). — dieser Abschnitt; API-Version GoTrue v2.197.0; Limitation: Edge-Function-Code (`supabase/functions/auth-login`, `auth-provision-user`) wurde geschrieben und die zugrunde liegenden HTTP-Aufrufe einzeln live verifiziert, aber nicht als paketiertes Edge-Function-Deployment ausgeführt (kein Deno-Edge-Runtime-Deploy-Zugang in dieser Sitzung; ein Testlauf wurde zudem vom Auto-Mode-Berechtigungssystem als "Modify Shared Resources" abgelehnt).
+- [x] **Bei PoC-Fehlschlag: Architektur-Stopp, keine Annahme/freie Auth-Nachentwicklung.** — entfällt, PoC bestanden; keine Ersatz-Auth entwickelt.
 
 ## Gate 2: Mandantentrennung und IAM
 - [ ] Fiktive Schulen A/B und Schüler/Lehrkraft/Schulleitung/Admin/Secretariat.

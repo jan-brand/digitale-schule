@@ -9,10 +9,13 @@
 
 **Markenfarbe:** `#4C1D95`
 
-| Modus | Background | Surface  | Text      | Action    |
-|-------|------------|----------|-----------|-----------|
-| Light | `#F8F7FC`  | `#FFFFFF`| `#1A1028` | `#4C1D95` |
-| Dark  | `#120C1D`  | `#1D152A`| `#F7F3FF` | `#A78BFA` |
+| Modus | Background | Surface  | Text      | Action (Primary) | Accent    |
+|-------|------------|----------|-----------|-------------------|-----------|
+| Light | `#F8F7FC`  | `#FFFFFF`| `#1A1028` | `#4C1D95`         | `#F1EAFF` |
+| Dark  | `#120C1D`  | `#1D152A`| `#F7F3FF` | `#A78BFA`         | `#302046` |
+
+Ergänzung (Campus Foundation v0.1 Entwicklungsauftrag, 13.10.2026): Accent-Token
+hinzugefügt, bestehende Werte unverändert.
 
 **Modi:** Hell, Dunkel und System
 
