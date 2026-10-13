@@ -92,14 +92,31 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
 
 - **M1 (technische Basis):** erledigt – Expo/TS/Lint/CI/Theme (inkl. Accent-
   Token), Projektstruktur gemäß `doc/IMPLEMENTATION_PLAN.md`.
-- **Datenbankschema:** Eine erste Version (sechs Migrationen,
-  `supabase/migrations/2026...`) wurde erstellt, lokal und gegen die echte
-  Instanz verifiziert, folgt aber noch dem **überholten** Mehrfach-Schul-
-  Mitgliedschaftsmodell. `doc/DATA_MODEL.md` ordnet den endgültigen
-  Schema-Entwurf (insbesondere `profiles`, `login_identifiers`) explizit
-  **nach** dem Auth-PoC ein ("DDL wird erst nach Auth-PoC endgültig
-  eingefroren"). Der Umbau auf strikt ein Account = eine Schule (D-004)
-  erfolgt deshalb zusammen mit diesem Schema-Rebuild, nicht doppelt.
+- **Sicherheits-Hotfix** (`supabase/migrations/20261014090001_security_
+  hardening_and_tenant_fix.sql`, inkrementell auf die echte Instanz
+  angewendet, kein `db reset`): behebt drei P0-Befunde aus dem Code-Review
+  von Commit `79ebec4a8a97` —
+  1. `fn_write_audit_event` war direkt für `authenticated` ausführbar und
+     ohne eigene Autorisierungsprüfung; beliebige Audit-Einträge wären
+     fälschbar gewesen. Direktes `EXECUTE`-Recht entzogen; bleibt intern
+     für die privilegierten SECURITY-DEFINER-Funktionen nutzbar.
+  2. `fn_revoke_role`/`fn_update_membership_status` verhinderten den Entzug
+     der Schulleitungsrolle nur, wenn dadurch kein Admin mehr übrig bliebe
+     — nicht grundsätzlich. Beide blockieren `principal` jetzt
+     bedingungslos (direkt und über den indirekten Suspendierungs-Pfad);
+     das bleibt ausschließlich der Betreiber-CLI vorbehalten.
+  3. `school_memberships` erlaubte dieselbe Auth-Identität in zwei Schulen
+     (`UNIQUE(school_id,user_id)`). Jetzt `UNIQUE(user_id)` — eine
+     Identität gehört genau einer Schule (D-004).
+
+  Alle drei Fixes wurden vor der Anwendung lokal (Wegwerf-Postgres) **und**
+  danach identisch gegen die echte Instanz verifiziert; Negativtests dafür
+  in `supabase/tests/database/003-security-hotfix.sql`. Vollständiger
+  `pg_dump`-Backup vor der Anwendung gezogen (liegt nicht im Repo).
+
+  **Noch nicht Teil dieses Hotfixes:** der vollständige Umbau von
+  `profiles`/`login_identifiers` auf das finale, PoC-abhängige Schema
+  (`doc/DATA_MODEL.md`) — das bleibt PR 3, nach dem Auth-PoC.
 - **Nächster Meilenstein (M2):** Auth-Proof-of-Concept — Benutzername+
   Passwort-Login ohne Pflicht-E-Mail über Supabase Auth, siehe GATE-AUTH in
   `doc/DECISIONS.md` und POC-01..10 in `doc/ACCEPTANCE.md`. Blockiert die
