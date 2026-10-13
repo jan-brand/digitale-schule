@@ -2,9 +2,10 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 
-// Route guarding (unauthenticated -> (auth), multi-membership without an
-// active selection -> select-school, else role landing) is added in Phase F2
-// once AuthProvider/SchoolProvider exist (doc/ARCHITECTURE.md).
+// Route guarding (no session -> (auth), active session -> (app)/dashboard)
+// is added once AuthProvider exists (Auth PoC, M2 / doc/ARCHITECTURE.md
+// "Auth-Grenze"). One account = exactly one school (D-004) — there is no
+// school-switching route.
 export default function RootLayout() {
   return (
     <ThemeProvider>

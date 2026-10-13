@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./types";
+import type { Database } from "@/types/database.types";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -13,9 +13,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Session storage (SecureStore on native, a web-safe adapter) is wired up
-// in Phase F2 alongside AuthProvider (doc/SECURITY.md rule on auth
-// persistence). Until then this is an anon-key-only client suitable for
-// public/unauthenticated reads.
+// alongside AuthProvider once the Auth PoC (Gate 1, doc/DECISIONS.md) has
+// settled how sign-in actually works. Until then this is an anon-key-only
+// client suitable for public/unauthenticated reads.
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
