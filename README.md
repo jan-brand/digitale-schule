@@ -117,11 +117,35 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
   **Noch nicht Teil dieses Hotfixes:** der vollständige Umbau von
   `profiles`/`login_identifiers` auf das finale, PoC-abhängige Schema
   (`doc/DATA_MODEL.md`) — das bleibt PR 3, nach dem Auth-PoC.
-- **Nächster Meilenstein (M2):** Auth-Proof-of-Concept — Benutzername+
-  Passwort-Login ohne Pflicht-E-Mail über Supabase Auth, siehe GATE-AUTH in
-  `doc/DECISIONS.md` und POC-01..10 in `doc/ACCEPTANCE.md`. Blockiert die
-  endgültige Login-Implementierung; andere Komponenten dürfen parallel
-  weiterentwickelt werden.
+- **M2 (Auth-PoC): bestanden.** Username+Passwort-Login ohne Pflicht-E-Mail
+  über echtes Supabase Auth live gegen die reale Instanz verifiziert
+  (GoTrue v2.197.0, synthetische Testkonten, wieder gelöscht) — Details
+  und die vollständige POC-01..10-Auswertung in `doc/ACCEPTANCE.md`
+  Gate 1. Muster: synthetische "technische" E-Mail
+  (`u-<uuid>@accounts.campus.internal`) als `auth.users.email`,
+  serverseitig aus `(schoolSlug, username)` aufgelöst über die private
+  `internal.login_identifiers`-Tabelle (`supabase/migrations/
+  20261014150001_auth_poc_foundations.sql` — nicht über die Data API
+  erreichbar), tatsächliche Passwortprüfung bleibt vollständig bei
+  Supabase Auth.
+  - Client-seitig umgesetzt: `src/providers/AuthProvider.tsx`, echter
+    Login-Screen (`src/app/(auth)/login.tsx`), Routen-Guard in
+    `src/app/_layout.tsx`, Logout in den Einstellungen.
+  - Edge Functions `supabase/functions/auth-login` und
+    `auth-provision-user` geschrieben; die zugrunde liegenden HTTP-Aufrufe
+    wurden einzeln live gegen die echte Instanz verifiziert, aber **nicht**
+    als paketiertes Edge-Function-Deployment ausgeführt (keine
+    Deno-Edge-Runtime vor Ort deploybar in dieser Sitzung).
+  - Noch offen aus dem PoC-Katalog: POC-05 (getrennte verifizierte
+    Kontakt-E-Mail — Architektur geklärt, nicht gebaut), POC-06/07
+    (Lehrkraft-Reset-Workflow — Kernmechanik von Supabase Auth bestätigt,
+    UI/Tabelle fehlt noch), POC-09 (kein tatsächlicher Browser-/
+    Simulator-Durchlauf in dieser Sitzung). Alle drei sind M5-Arbeit bzw.
+    Umgebungs-Limitationen, kein Hinweis auf einen PoC-Fehlschlag.
+- **Nächster Meilenstein (M3):** finales Datenmodell (`profiles`,
+  vollständige `login_identifiers`-Integration, `permissions`,
+  `invitations`, `password_reset_requests`, `import_jobs`) gemäß
+  `doc/DATA_MODEL.md`.
 
 ## Sicherheit
 

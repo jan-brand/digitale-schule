@@ -27,9 +27,9 @@ insert into auth.users (
 
 -- --- schools ---------------------------------------------------------------
 
-insert into public.schools (id, name, status) values
-  ('a0000000-0000-0000-0000-000000000001', 'Campus Schule A (Testdaten)', 'active'),
-  ('a0000000-0000-0000-0000-000000000002', 'Campus Schule B (Testdaten)', 'active');
+insert into public.schools (id, name, status, slug) values
+  ('a0000000-0000-0000-0000-000000000001', 'Campus Schule A (Testdaten)', 'active', 'demo-a'),
+  ('a0000000-0000-0000-0000-000000000002', 'Campus Schule B (Testdaten)', 'active', 'demo-b');
 
 -- --- school_memberships ----------------------------------------------------
 
