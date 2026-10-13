@@ -61,7 +61,7 @@ supabase db reset       # wendet supabase/migrations/* + seed.sql an
 supabase test db        # pgTAP: RLS-Isolationsmatrix (supabase/tests/database/)
 ```
 
-`supabase/migrations/` enthält das Schema in sechs Schritten (`0001`–`0006`),
+`supabase/migrations/` enthält das Schema in sechs versionierten, Supabase-CLI-kompatiblen Migrationen (`20261013220001`–06),
 abgeglichen mit `doc/DATA_MODEL.md` sowie den neueren, vorrangigen
 `doc/CAMPUS_IAM_ACCOUNT_LIFECYCLE_v0_4.md` und
 `doc/CAMPUS_PERMISSION_MATRIX_FOUNDATION_v0_3.md`. Konkret umgesetzt:

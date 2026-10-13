@@ -23,7 +23,7 @@ insert into auth.users (
   ('00000000-0000-0000-0000-000000000000', '40000000-0000-0000-0000-00000000000d', 'authenticated', 'authenticated', 'parent.a1@campus.test', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Elternteil A1"}', now(), now(), '', '');
 
 -- public.profiles rows are created automatically by the on_auth_user_created
--- trigger (0006_rls_policies.sql).
+-- trigger (20261013220006_rls_policies.sql).
 
 -- --- schools ---------------------------------------------------------------
 
@@ -45,7 +45,7 @@ insert into public.school_memberships (id, school_id, user_id, status, joined_at
 -- --- role_assignments --------------------------------------------------
 -- (direct inserts here bypass fn_assign_role — fine for seed data, which
 -- runs as the table owner/superuser; real role changes always go through
--- fn_assign_role/fn_revoke_role, see 0006_rls_policies.sql.)
+-- fn_assign_role/fn_revoke_role, see 20261013220006_rls_policies.sql.)
 
 insert into public.role_assignments (school_id, membership_id, role_code) values
   ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000a0a0a', 'school_admin'),
