@@ -46,9 +46,37 @@ npm test
 npm run web
 ```
 
-Supabase-Migrationen liegen unter `supabase/migrations/`. Details zur Zielumgebung
-(aktuell ein selbst betriebener Supabase-Stack) und Migrationskommandos folgen, sobald
-die Schema-Migrationen vorliegen (siehe `doc/PROJECT_PLAN.md`, Phase F1).
+### Supabase (lokal)
+
+```bash
+supabase start          # benötigt Docker
+supabase db reset       # wendet supabase/migrations/* + seed.sql an
+supabase test db        # pgTAP: RLS-Isolationsmatrix (supabase/tests/database/)
+```
+
+`supabase/migrations/` enthält das vollständige Schema aus `doc/DATA_MODEL.md`
+(Tabellen, Constraints, RLS-Policies) in sechs Schritten (`0001`–`0006`). Alle
+Migrationen und die RLS-Policies wurden gegen eine lokale Postgres-Instanz
+verifiziert (siehe Commit-Historie); `supabase/tests/database/001-rls-isolation.sql`
+deckt die Kernfälle aus der Testmatrix ab (Cross-School-Zugriff verweigert,
+Admin-Schreibzugriff korrekt auf die eigene Schule begrenzt, keine Grants für
+`anon`).
+
+### Supabase (Zielumgebung)
+
+Die eigentliche Zielumgebung ist ein selbst betriebener Supabase-Stack unter
+`supabase.jan-brand.space`. Zum Stand dieses Commits:
+
+- Die URL + Anon-Key folgen dem öffentlich bekannten Supabase-Self-Hosting-
+  Demo-Muster (`iss: "supabase-demo"`). **Vor jedem produktiven Einsatz müssen
+  `JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY` und `POSTGRES_PASSWORD` rotiert
+  werden** – mit den Default-Werten hat jede Person, die die offizielle
+  Self-Hosting-Dokumentation kennt, bereits vollen `service_role`-Zugriff.
+- Eine funktionierende Postgres-Verbindung zu dieser Instanz stand bei der
+  Erstellung dieser Migrationen nicht zur Verfügung; sie wurden deshalb lokal
+  verifiziert, aber noch nicht gegen `supabase.jan-brand.space` angewendet.
+  Das muss vor dem Merge nachgeholt werden (`psql`/`supabase db push` mit
+  einer echten Verbindungszeichenfolge).
 
 ## Sicherheit
 

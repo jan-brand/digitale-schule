@@ -19,3 +19,17 @@ jobs:
       - run: npm run typecheck
       - run: npm test -- --ci
       - run: npm run web:build
+
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.78.1
+      # Applies supabase/migrations/* + seed.sql to a fresh local stack
+      # (AC-12: migrations reproduce cleanly from an empty DB) and runs the
+      # pgTAP suite in supabase/tests/database/ (RLS isolation matrix,
+      # doc/DATA_MODEL.md).
+      - run: supabase start
+      - run: supabase test db
