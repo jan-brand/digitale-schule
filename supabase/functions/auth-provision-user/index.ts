@@ -95,7 +95,10 @@ Deno.serve(async (req: Request) => {
       email: technicalEmail,
       password,
       email_confirm: true,
-      user_metadata: { display_name: `${firstName} ${lastName}` },
+      // fn_handle_new_user (supabase/migrations/20261014180001_final_data_model.sql)
+      // reads these three fields to populate profiles.{school_id,first_name,last_name}
+      // at insert time — profiles.school_id is NOT NULL, so this must be present.
+      user_metadata: { school_id: schoolId, first_name: firstName, last_name: lastName },
     }),
   });
 

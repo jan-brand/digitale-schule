@@ -24,8 +24,9 @@ $$ language plpgsql;
 -- directly, exactly as the not-yet-built CLI would via its own trusted
 -- path). Rolled back with everything else at the end of this file.
 set local role postgres;
-insert into public.role_assignments (school_id, membership_id, role_code)
-values ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000a2222', 'principal');
+insert into public.role_assignments (school_id, membership_id, role_id)
+select 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000a2222', id
+from public.roles where code = 'principal';
 
 -- 1) P0-01: an ordinary authenticated client cannot call
 -- fn_write_audit_event directly, even with an innocuous-looking payload.
@@ -41,8 +42,8 @@ select throws_ok(
 select pg_temp.act_as('10000000-0000-0000-0000-00000000000a');
 select throws_ok(
   $$ select public.fn_revoke_role(
-       (select id from public.role_assignments
-        where membership_id = 'b0000000-0000-0000-0000-0000000a2222' and role_code = 'principal' and revoked_at is null),
+       (select ra.id from public.role_assignments ra join public.roles r on r.id = ra.role_id
+        where ra.membership_id = 'b0000000-0000-0000-0000-0000000a2222' and r.code = 'principal' and ra.revoked_at is null),
        'trying to demote principal'
      ) $$,
   'principal_role_is_cli_only',
@@ -81,16 +82,17 @@ select throws_ok(
 -- below would pass for the wrong reason (another admin remains) rather
 -- than the one actually being tested (the single real school_admin is
 -- protected on its own).
-delete from public.role_assignments
-where membership_id = 'b0000000-0000-0000-0000-0000000a2222' and role_code = 'principal';
+delete from public.role_assignments ra
+using public.roles r
+where ra.role_id = r.id and ra.membership_id = 'b0000000-0000-0000-0000-0000000a2222' and r.code = 'principal';
 
 -- 6) The pre-existing last-admin invariant (IAM-022) still holds after
 -- the P0-02 rewrite of fn_revoke_role.
 select pg_temp.act_as('10000000-0000-0000-0000-00000000000a');
 select throws_ok(
   $$ select public.fn_revoke_role(
-       (select id from public.role_assignments
-        where membership_id = 'b0000000-0000-0000-0000-0000000a0a0a' and role_code = 'school_admin' and revoked_at is null),
+       (select ra.id from public.role_assignments ra join public.roles r on r.id = ra.role_id
+        where ra.membership_id = 'b0000000-0000-0000-0000-0000000a0a0a' and r.code = 'school_admin' and ra.revoked_at is null),
        'stepping down'
      ) $$,
   'last_active_admin_required',

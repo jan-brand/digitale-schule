@@ -142,10 +142,38 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     UI/Tabelle fehlt noch), POC-09 (kein tatsächlicher Browser-/
     Simulator-Durchlauf in dieser Sitzung). Alle drei sind M5-Arbeit bzw.
     Umgebungs-Limitationen, kein Hinweis auf einen PoC-Fehlschlag.
-- **Nächster Meilenstein (M3):** finales Datenmodell (`profiles`,
-  vollständige `login_identifiers`-Integration, `permissions`,
-  `invitations`, `password_reset_requests`, `import_jobs`) gemäß
-  `doc/DATA_MODEL.md`.
+- **M3 (finales Datenmodell): abgeschlossen.** Gegen die echte Instanz
+  angewendet (`supabase/migrations/20261014180001_final_data_model.sql`,
+  inkrementell, Backup zuerst, kein `db reset`):
+  - `profiles` um `school_id`/`first_name`/`last_name`/`status` ergänzt,
+    `display_name` entfernt; Backfill aus den bestehenden
+    `school_memberships` bzw. dem alten `display_name` verifiziert.
+  - Echte `permissions`-Katalogtabelle ersetzt den direkten
+    `permission_key`-Enum-Vergleich in `role_permissions`/
+    `permission_grants` (Enum bleibt als fester Werteraum erhalten,
+    liefert aber nur noch `permissions.code`).
+  - `role_assignments.role_code` → `role_id` (FK auf `roles`); alle
+    SECURITY-DEFINER-Funktionen (`fn_assign_role`, `fn_revoke_role`,
+    `fn_update_membership_status`, `fn_has_role`,
+    `fn_assert_active_admin_remains`) umgehängt — Selbstaufwertungs-,
+    Principal-CLI-only- und Letzter-Admin-Schutz unverändert bestätigt.
+  - `school_invitations` → `invitations` (Doc hat Namensvorrang).
+  - Neu (nur Schema, Workflows folgen in M5): `password_reset_requests`,
+    `import_jobs`, `import_job_rows` — RLS aktiv, kein Client-Schreibrecht.
+  - `user_preferences`: `(user_id, school_id)` → `profile_id` allein als PK.
+  - **Beim Vorbereiten entdeckt:** ein 8. Profil (`max.vernon@icloud.com`,
+    keine `school_memberships`-Zeile) existierte auf dem echten Server —
+    kein Teil der synthetischen Seed-Daten. Nach Rückfrage als
+    Alt-Testkonto bestätigt und vor der Migration über die Auth-Admin-API
+    gelöscht (nicht per rohem SQL-Delete, damit GoTrue alle zugehörigen
+    Zustände korrekt aufräumt).
+  - `internal.login_identifiers` auch für die 7 bestehenden Seed-Accounts
+    nachgetragen (vorher nur für neu über `auth-provision-user`
+    angelegte Accounts vorhanden).
+  - Alle 4 Testdateien (`001`–`004`) von Hand gegen Wegwerf-Postgres
+    **und** identisch gegen die echte Instanz verifiziert.
+- **Nächster Meilenstein (M4):** Benutzerverwaltung (Suche, Einladen,
+  Rollen-/Zusatzrechte-UI, Benutzername-Administration).
 
 ## Sicherheit
 

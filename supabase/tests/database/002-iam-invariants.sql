@@ -48,8 +48,8 @@ select throws_ok(
 select pg_temp.act_as('10000000-0000-0000-0000-00000000000a');
 select throws_ok(
   $$ select public.fn_revoke_role(
-       (select id from public.role_assignments
-        where membership_id = 'b0000000-0000-0000-0000-0000000a0a0a' and role_code = 'school_admin' and revoked_at is null),
+       (select ra.id from public.role_assignments ra join public.roles r on r.id = ra.role_id
+        where ra.membership_id = 'b0000000-0000-0000-0000-0000000a0a0a' and r.code = 'school_admin' and ra.revoked_at is null),
        'stepping down'
      ) $$,
   'last_active_admin_required',
