@@ -43,6 +43,10 @@ export type Database = {
         Args: { p_permission_grant_id: string; p_reason: string };
         Returns: undefined;
       };
+      fn_issue_teacher_reset_code: {
+        Args: { p_target_profile_id: string; p_reason: string };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

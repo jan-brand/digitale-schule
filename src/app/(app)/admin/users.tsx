@@ -9,6 +9,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import {
   SchoolMember,
   inviteUser,
+  issueTeacherResetCode,
   listMembers,
   reactivateMembership,
   suspendMembership,
@@ -33,6 +34,7 @@ export default function AdminUsersScreen() {
   const [lastName, setLastName] = useState("");
   const [inviteResult, setInviteResult] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
+  const [resetCodeResult, setResetCodeResult] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -75,6 +77,22 @@ export default function AdminUsersScreen() {
     }
   }
 
+  async function handleIssueResetCode(member: SchoolMember) {
+    setActionError(null);
+    setResetCodeResult(null);
+    try {
+      const code = await issueTeacherResetCode(
+        member.profileId,
+        "Passwort-Reset über die Benutzerverwaltung angefordert",
+      );
+      setResetCodeResult(
+        `Code für ${member.firstName} ${member.lastName}: ${code} (einmalig gültig, 30 Minuten) — bitte persönlich weitergeben, nie per E-Mail.`,
+      );
+    } catch {
+      setActionError("Reset-Code konnte nicht erzeugt werden. Nur für Lehrkräfte/Admins bei Schülerkonten möglich.");
+    }
+  }
+
   async function handleToggleStatus(member: SchoolMember) {
     setActionError(null);
     try {
@@ -111,6 +129,11 @@ export default function AdminUsersScreen() {
       {actionError ? (
         <Text style={{ color: "#D92D20", marginTop: theme.spacing.md }}>{actionError}</Text>
       ) : null}
+      {resetCodeResult ? (
+        <Text variant="caption" style={{ marginTop: theme.spacing.sm }}>
+          {resetCodeResult}
+        </Text>
+      ) : null}
 
       <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
         <Text variant="body">Mitglieder</Text>
@@ -129,11 +152,20 @@ export default function AdminUsersScreen() {
                 {member.roles.join(", ") || "keine Rolle"} · {member.status}
               </Text>
             </View>
-            <Button
-              label={member.status === "active" ? "Sperren" : "Reaktivieren"}
-              variant="secondary"
-              onPress={() => handleToggleStatus(member)}
-            />
+            <View style={{ flexDirection: "row", gap: theme.spacing.xs }}>
+              {member.roles.includes("student") ? (
+                <Button
+                  label="Reset-Code"
+                  variant="secondary"
+                  onPress={() => handleIssueResetCode(member)}
+                />
+              ) : null}
+              <Button
+                label={member.status === "active" ? "Sperren" : "Reaktivieren"}
+                variant="secondary"
+                onPress={() => handleToggleStatus(member)}
+              />
+            </View>
           </Card>
         ))}
       </View>

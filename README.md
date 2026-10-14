@@ -231,8 +231,51 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     kein Deno-Edge-Runtime-Deploy-Zugang hier) — die zugrunde liegenden
     Bausteine (Auth-Admin-API, `fn_finalize_invite`, `fn_assign_role`)
     wurden aber einzeln gegen die echte Instanz bestätigt.
-- **Nächster Meilenstein (M5):** CSV-Import, Lehrkraft-initiierter
-  Passwortreset-Workflow.
+- **M5 (Teil 1, Passwort-Reset): abgeschlossen** —
+  `20261014230001_m5_password_reset.sql` +
+  `supabase/functions/{password-recovery-request,password-recovery-redeem}`
+  + `supabase/functions/_shared/email.ts`:
+  - **E-Mail-Weg geplant, in Entwicklung geloggt:** `EmailSender`-
+    Abstraktion mit `EMAIL_PROVIDER=log` (Standard, schreibt Inhalt inkl.
+    Code/Link in die Function-Logs) und einem noch nicht implementierten
+    `smtp`-Pfad (wirft bewusst einen Fehler statt stillschweigend nichts
+    zu tun, bis `SMTP_*`-Secrets existieren) — Plan für die echte
+    SMTP-Anbindung (Env-Variablen, Deno-SMTP-Client, Log-Hygiene ohne
+    Klartext-Inhalte) im Modul-Kommentar dokumentiert.
+  - `profiles.contact_email`/`contact_email_verified_at` ergänzt (POC-05):
+    getrennt von `auth.users.email`, damit eine spätere Verifizierung den
+    technischen Login niemals zerstören kann.
+  - Verfahren A (verifizierte E-Mail, `password-recovery-request`):
+    öffentlich, kein Login nötig; liefert **immer** dieselbe generische
+    Antwort, unabhängig davon, ob Konto/Schule/verifizierte E-Mail
+    existieren (keine Enumeration).
+  - Verfahren B (`fn_issue_teacher_reset_code`): einzig möglicher Weg,
+    einen `teacher_code`-Eintrag anzulegen. Nur aktive Lehrkraft/Admin
+    derselben Schule, Ziel muss Schülerrolle haben, vorherige nicht
+    eingelöste Codes werden beim Ausstellen eines neuen automatisch
+    entwertet, Code wird einmalig zurückgegeben (nie per E-Mail).
+  - `password-recovery-redeem`: gemeinsame Einlösung für beide Verfahren;
+    atomares `UPDATE ... RETURNING` verhindert Doppel-Einlösung; nutzt
+    dieselbe Admin-API-Erkenntnis aus M2 (Passwortänderung entwertet
+    alte Refresh-Tokens automatisch).
+  - Echte UI: `(auth)/recover.tsx` (beide Verfahren), Button „Reset-Code“
+    pro Schülerzeile in `/admin/users`.
+  - **Beim Verifizieren gegen die echte Instanz gefunden:** `digest()`
+    aus pgcrypto schlug dort fehl — `pgcrypto` liegt auf dem echten
+    Server im Schema `extensions`, nicht `public` (anders als auf jeder
+    Wegwerf-Postgres-Instanz in dieser Sitzung, wo es default nach
+    `public` installiert wird). `fn_issue_teacher_reset_code`s
+    `search_path` fehlte `extensions`. Noch vor dem ersten Commit in der
+    Migrationsdatei selbst korrigiert (nicht nachträglich "gefixt"), die
+    bereits angewendete, fehlerhafte Version direkt auf dem echten
+    Server durch die korrigierte ersetzt.
+  - Alle 5 Testfälle (`006-m5-password-reset.sql`) gegen Wegwerf-Postgres
+    **und** identisch gegen die echte Instanz verifiziert (letztere erst
+    nach dem `search_path`-Fix erfolgreich). Postgres.js/Deno-Grundlagen
+    (`sql.json()`, parametrisierte Inserts) separat gegen eine lokale
+    Wegwerf-DB bestätigt — die paketierten Edge Functions selbst liefen
+    nicht live (gleiche Umgebungsgrenze wie M2/M4).
+- **Nächster Schritt (M5, Teil 2):** CSV-Import.
 
 ## Sicherheit
 

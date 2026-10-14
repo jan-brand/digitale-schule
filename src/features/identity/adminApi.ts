@@ -162,3 +162,17 @@ export async function revokePermission(permissionGrantId: string, reason: string
   });
   if (error) throw toCampusError(error, "Zusatzrecht konnte nicht entzogen werden.");
 }
+
+// Verfahren B (D-011/D-012): a teacher issues a one-time code for a
+// student in their own school and relays it out-of-band — never
+// emailed. fn_issue_teacher_reset_code re-checks the caller's standing
+// and the target's role itself; this is a thin wrapper, not the
+// authorization boundary.
+export async function issueTeacherResetCode(targetProfileId: string, reason: string): Promise<string> {
+  const { data, error } = await supabase.rpc("fn_issue_teacher_reset_code", {
+    p_target_profile_id: targetProfileId,
+    p_reason: reason,
+  });
+  if (error || !data) throw toCampusError(error, "Reset-Code konnte nicht erzeugt werden.");
+  return data;
+}
