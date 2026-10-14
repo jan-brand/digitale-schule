@@ -314,6 +314,39 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     7 echten Unit-Tests — keine neue Abhängigkeit für reines Text-Parsen.
   - Alle 8 Testfälle (`007-m5-csv-import.sql`) gegen Wegwerf-Postgres
     **und** identisch gegen die echte Instanz verifiziert.
+- **M6 (Campus-CLI): abgeschlossen** — `tools/campus-cli/` (eigenständiges
+  Node-Skript, läuft über `npm run cli -- <befehl>`, **niemals** Teil des
+  Expo-Bundles, siehe eigene `tools/campus-cli/README.md`):
+  - Befehle: `create-school`, `create-first-admin` (Admin-API +
+    `internal.fn_suggest_username` + direkte Rollenzuweisung — die CLI
+    operiert mit privilegiertem direktem DB-Zugriff, nicht über
+    `fn_assign_role`, da bei einer brandneuen Schule noch kein
+    autorisierter „Aufrufer" existiert), `assign-principal`/
+    `revoke-principal` (einzig möglicher Weg für die Schulleitungsrolle
+    — `fn_assign_role`/`fn_revoke_role` in der App lehnen `principal`
+    kategorisch ab), `emergency-restore-admin` (Break-Glass: verweigert
+    die Ausführung, wenn die Schule noch einen aktiven Admin/
+    Schulleitung hat — kein normaler Ernennungsweg), `school-status`.
+  - Jeder privilegierte Befehl verlangt `--operator` + `--reason` und
+    schreibt einen `audit_events`-Eintrag.
+  - **Bewusst nicht gelöst** (`doc/DECISIONS.md` OPEN-10, unverändert
+    offen): keine Operator-Authentifizierung, keine Vier-Augen-Kontrolle
+    für Break-Glass-Aktionen. `--operator` ist Freitext zur
+    Nachvollziehbarkeit, keine echte Identität — die eigentliche
+    Berechtigungsgrenze ist aktuell, wer die DB-/Service-Role-Zugangsdaten
+    besitzt (organisatorisch, nicht technisch durchgesetzt).
+  - **Tatsächlich ausgeführt** (nicht nur die zugrunde liegende SQL wie
+    bei den Edge Functions zuvor — dieses Tool läuft als normales
+    Node-Skript, keine Deno-Edge-Runtime-Einschränkung): alle Befehle
+    gegen Wegwerf-Postgres real durchlaufen, inklusive doppelter
+    Slug-Ablehnung, Letzter-Admin-Schutz bei `revoke-principal`, Break-
+    Glass-Verweigerung bei vorhandenem Admin und erfolgreicher
+    Wiederherstellung bei echtem Lockout, Audit-Einträge geprüft.
+    `school-status` zusätzlich lesend gegen die echte Instanz bestätigt.
+    `create-first-admin`s Admin-API-Aufruf wurde nicht live gegen die
+    echte Instanz ausgeführt (reale Kontoanlage), seine Logik danach
+    entspricht exakt dem bereits verifizierten `auth-provision-user`-
+    Muster.
 
 ## Sicherheit
 
