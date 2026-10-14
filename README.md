@@ -347,6 +347,38 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     echte Instanz ausgeführt (reale Kontoanlage), seine Logik danach
     entspricht exakt dem bereits verifizierten `auth-provision-user`-
     Muster.
+- **M7 (App Shell und Navigation): abgeschlossen** —
+  `src/components/layout/{AppShell,Sidebar,BottomNavigation,TopBar}.tsx`,
+  `src/components/navigation/navItems.ts`,
+  `src/features/identity/useCurrentMember.ts`, `src/app/(app)/_layout.tsx`,
+  neuer Screen `(app)/school.tsx` (SCR-05), nach `doc/UI_UX_
+  SPECIFICATION.md` (UX-02-Ticket):
+  - Adaptive Shell: < 768 px → Bottom Navigation (Übersicht/Schule/Mehr)
+    mit „Mehr“ als Sheet (natives `Modal`, keine neue Abhängigkeit);
+    ≥ 768 px → einklappbare Seitenleiste (Zustand lokal persistiert,
+    wie schon beim Theme). TopBar mit Seitentitel + Suchfeld, klar als
+    „noch nicht verfügbar" markiert (§16.1 erlaubt das explizit, solange
+    nicht als funktionierendes Feature simuliert — echte
+    rollenübergreifende Suche ist ein eigenes, hier nicht enthaltenes
+    Ticket).
+  - `useCurrentMember`: eine Abfrage der eigenen Mitgliedschaft (RLS
+    „eigene Zeile" — kein Sonderfall nötig, D-004 garantiert ohnehin nur
+    eine Schule) liefert Rollen für die Navigationsanzeige. Rein
+    UX-seitig: „Verwaltung" erscheint nur bei `school_admin`/`principal`,
+    aber jede Admin-Route prüft ihre Berechtigung weiterhin unabhängig
+    serverseitig.
+  - **Bewusste Vereinfachung:** Die Spezifikation unterscheidet drei
+    Breakpoints (Mobil/Tablet/Desktop), hier nur zwei umgesetzt — Tablet
+    bekommt dieselbe Sidebar wie Desktop statt einer eigenen temporären
+    Overlay-Variante. Zeitlich begründete Vereinfachung, keine
+    übersehene Anforderung.
+  - Barrierefreiheit: eingeklappte Sidebar-Einträge behalten ihren
+    vollen Accessibility-Namen (nicht nur den sichtbar verkürzten
+    Anfangsbuchstaben) — beim Umsetzen explizit nachgezogen, da zunächst
+    übersehen.
+  - **Nicht visuell im Browser verifiziert** (kein Browser-Tool in
+    dieser Sitzung verfügbar) — nur `typecheck`/`lint`/`test`/
+    `web:build` (jetzt mit `/school`) bestanden.
 
 ## Sicherheit
 

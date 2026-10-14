@@ -5,20 +5,28 @@ import { Text } from "@/components/ui/Text";
 
 interface NavItemProps {
   label: string;
+  /** Full accessible name — required when `label` is visually truncated
+   * (e.g. a collapsed sidebar showing just an initial), per
+   * doc/UI_UX_SPECIFICATION.md §4: "Eingeklappte Icons erhalten ...
+   * eindeutigen Accessibility-Namen." Defaults to `label`. */
+  accessibilityLabel?: string;
   active?: boolean;
   disabled?: boolean;
   onPress?: () => void;
 }
 
-// Generic nav row. Role-filtered navigation (which items a role sees, and
-// which out-of-scope modules render disabled) lives in RoleNav, added in
-// Phase F3 once roles/active-school context exist (doc/PROJECT_PLAN.md).
-export function NavItem({ label, active = false, disabled = false, onPress }: NavItemProps) {
+// Generic nav row used by both the Sidebar and BottomNavigation/MoreMenu
+// (doc/UI_UX_SPECIFICATION.md §3/§4/§8). Which items appear at all is
+// decided by src/components/navigation/navItems.ts based on the
+// caller's own roles — purely a UX convenience; the server
+// independently re-authorizes every route regardless.
+export function NavItem({ label, accessibilityLabel, active = false, disabled = false, onPress }: NavItemProps) {
   const { theme } = useTheme();
 
   return (
     <Pressable
       accessibilityRole="link"
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled, selected: active }}
       disabled={disabled}
       onPress={onPress}
