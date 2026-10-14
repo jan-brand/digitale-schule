@@ -434,6 +434,76 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     visuell im Browser geprüft** (kein Browser-Tool verfügbar) —
     insbesondere die Rollenfokus-Sortierung und das Ein-/Ausblenden
     wurden nicht interaktiv getestet.
+- **M10 (Schulorganisation, Klassen-Roster, globale Suche):
+  abgeschlossen** — neue Migration
+  `supabase/migrations/20261014250001_m10_class_rosters.sql`:
+  `class_memberships`-Tabelle (Schüler↔Klasse), RLS enger als
+  `class_staff_assignments`/`classes` (nur eigene Zeile oder
+  `school_admin`/`classes.manage`, nicht jedes aktive Mitglied —
+  begründet in der Migration: eine volle Klassenliste ist
+  sensibler als wer sie unterrichtet, SCR-08 „keine unnötigen
+  privaten Daten"). `fn_confirm_csv_import` liefert jetzt zusätzlich
+  `class_name` zurück (Signaturänderung, daher `DROP FUNCTION` +
+  Neuanlage in der neuen Migration statt Edit der alten).
+  - **Schließt die in M5 Teil 2 dokumentierte Lücke:** CSV-Import
+    validierte `class_name` bereits, konnte ihn aber nirgends
+    speichern, da die Tabelle fehlte. `admin-import-csv-process` löst
+    jetzt pro Zeile die Klasse auf und legt den Roster-Eintrag an
+    (über das eigene weitergeleitete JWT des Aufrufers, RLS-geprüft
+    wie jeder andere Schreibzugriff in dieser Funktion). Fehlt dem
+    Aufrufer `classes.manage` (nur `memberships.invite` genügt zum
+    Importieren selbst), schlägt nur die Klassenzuordnung fehl — das
+    Konto wird trotzdem angelegt; bewusst nicht als Zeilenfehler
+    gewertet, da der eigentliche Import erfolgreich war.
+  - Vollständige Verify-Disziplin eingehalten: Wegwerf-Postgres (lokal
+    neu aufgesetzt, Stub-`auth`-Schema wie in früheren Milestones),
+    alle 14 Migrationen + `seed.sql` angewendet, manuelle Replays von
+    Test 007 (CSV-Import) und neue RLS-Checks für `class_memberships`
+    (Admin sieht Klasse, eigene Zeile sichtbar, fremde Schülerzeile
+    nicht sichtbar, cross-school verweigert, Lehrkraft ohne
+    `classes.manage` kann nicht schreiben, Admin kann) — alle
+    bestanden, dann identisch gegen den echten Server über den
+    SSH-Tunnel wiederholt (vorher `pg_dump`-Backup; `pg_dump`/`psql`
+    14 passten nicht zur Serverversion 17, daher zusätzlich
+    `postgresql@17` separat installiert, nicht gelinkt, nur für
+    diesen Zugriff benutzt). Migration in
+    `supabase_migrations.schema_migrations` manuell nachgetragen,
+    Wegwerfinstanz abgebaut.
+  - `src/features/academic/academicApi.ts`: direkte RLS-geschützte
+    Tabellenzugriffe (kein SECURITY-DEFINER-Wrapper) — konsistent mit
+    der bestehenden Begründung in der RLS-Migration, dass
+    Schulorganisation „nicht identitäts-privilegiert-sensibel" ist,
+    anders als Mitgliedschaften/Rollen. `src/types/database.types.ts`
+    um echte, handgeschriebene `Tables`-Einträge für
+    `school_years`/`classes`/`class_staff_assignments`/
+    `class_memberships` erweitert (vorher nur `Functions`, da
+    `.insert()` sonst nicht typsicher wäre — kein `supabase gen
+    types`-Lauf möglich, wie schon in `database.types.ts` dokumentiert).
+  - Neue Screens: `admin/school-years.tsx` (SCR-12, minimal: Liste +
+    Anlegen; keine „aktive Periode"-Markierung, da die Spalte dafür
+    nicht existiert) und `admin/classes.tsx` (SCR-13: Klassen anlegen,
+    Klassenleitung zuweisen/beenden, Klassenliste pflegen). Kein neues
+    `Select`-Komponente — einfacher Chip-Picker reicht für die kleinen
+    Optionslisten (Schuljahre, Klassen).
+  - Globale Suche (UX-DEC-07) ersetzt das in M7 als „noch nicht
+    verfügbar" markierte Suchfeld in der TopBar: durchsucht Mitglieder
+    und Klassen, beide über den normalen RLS-geschützten Client-Pfad
+    (ein Nicht-Admin bekommt bei der Mitgliedersuche nur seine eigene
+    Zeile, genau wie `admin/users.tsx` das für die Liste schon
+    voraussetzt). Treffer verlinken auf die bestehenden Listen-Screens,
+    da es noch keine Einzel-Detailseiten gibt.
+  - **Bewusst nicht umgesetzt:** SCR-11 (Berechtigungen/Delegationen-
+    UI), SCR-14/15 (Fächer/Kurse-UI), SCR-16 (Modulübersicht), SCR-17
+    (Audit-Liste-UI) — Datenmodell/Backend existiert teils schon
+    (`subjects`, `courses`, `audit_events`), aber keine eigene UI in
+    dieser Runde; als Folgearbeit offen, nicht übersehen.
+  - Verifiziert: `typecheck`/`lint`/`test`/`web:build` bestehen (neue
+    Routen `/admin/school-years`, `/admin/classes` exportiert). Die
+    Schema-/RLS-Ebene wurde wie oben beschrieben sowohl lokal als auch
+    gegen den echten Server verifiziert. **Nicht visuell im Browser
+    geprüft** — insbesondere der Chip-Picker, der Mitglieder-Picker mit
+    Live-Filter und die globale Suche wurden nicht interaktiv
+    getestet.
 
 ## Sicherheit
 

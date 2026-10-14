@@ -8,6 +8,8 @@ const TITLES: Record<string, string> = {
   "/settings": "Profil & Einstellungen",
   "/admin/users": "Mitglieder",
   "/admin/import": "CSV-Import",
+  "/admin/school-years": "Schuljahre",
+  "/admin/classes": "Klassen",
 };
 
 // Wraps every authenticated screen with the adaptive shell (doc/UI_UX_

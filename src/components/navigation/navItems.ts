@@ -18,6 +18,8 @@ export const SETTINGS_ITEM: NavItem = { key: "settings", label: "Profil & Einste
 export const ADMIN_ITEMS: NavItem[] = [
   { key: "admin-users", label: "Mitglieder", href: "/(app)/admin/users" },
   { key: "admin-import", label: "CSV-Import", href: "/(app)/admin/import" },
+  { key: "admin-school-years", label: "Schuljahre", href: "/(app)/admin/school-years" },
+  { key: "admin-classes", label: "Klassen", href: "/(app)/admin/classes" },
 ];
 
 export function buildNavItems(hasAdminAccess: boolean): NavItem[] {

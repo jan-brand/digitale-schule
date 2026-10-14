@@ -27,6 +27,7 @@ interface ConfirmedRow {
   first_name: string;
   last_name: string;
   role_code: string;
+  class_name: string | null;
 }
 
 function randomPassword(): string {
@@ -149,6 +150,30 @@ Deno.serve(async (req: Request) => {
         p_error_code: "role_assignment_failed",
       });
       continue;
+    }
+
+    // Class-roster assignment (M10): resolve the validated class_name to
+    // a class_id and link it via class_memberships, using the caller's
+    // own forwarded JWT so RLS (classes.manage/school_admin) applies —
+    // same as every other write in this loop. If the caller only holds
+    // memberships.invite (not classes.manage), this insert is rejected
+    // by RLS; that's treated as non-fatal — the account itself was
+    // already created successfully, only the roster link is skipped.
+    if (row.class_name) {
+      const { data: classRow } = await callerClient
+        .from("classes")
+        .select("id")
+        .eq("school_id", schoolId)
+        .eq("name", row.class_name)
+        .maybeSingle();
+      if (classRow) {
+        const { error: rosterError } = await callerClient
+          .from("class_memberships")
+          .insert({ school_id: schoolId, class_id: classRow.id, membership_id: membershipId });
+        if (rosterError) {
+          console.error(`class_memberships insert failed for row ${row.row_number}: ${rosterError.message}`);
+        }
+      }
     }
 
     imported++;
