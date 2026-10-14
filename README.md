@@ -275,7 +275,45 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     (`sql.json()`, parametrisierte Inserts) separat gegen eine lokale
     Wegwerf-DB bestätigt — die paketierten Edge Functions selbst liefen
     nicht live (gleiche Umgebungsgrenze wie M2/M4).
-- **Nächster Schritt (M5, Teil 2):** CSV-Import.
+- **M5 (Teil 2, CSV-Import): abgeschlossen** —
+  `20261014240001_m5_csv_import.sql` + `supabase/functions/admin-import-
+  csv-process` + `src/app/(app)/admin/import.tsx`:
+  - Pipeline in vier Schritten: `fn_stage_csv_import` (reine SQL-Funktion,
+    parst/validiert eine bereits client-seitig geparste Zeilen-Liste —
+    kein Service-Role nötig), Admin sieht die Vorschau direkt über die
+    bestehende admin-read-only-RLS auf `import_job_rows`,
+    `fn_confirm_csv_import` (atomarer Claim, schützt gegen doppelte
+    Ausführung — ein zweiter Bestätigungsversuch auf einen bereits
+    laufenden Job schlägt fehl), dann die eigentliche Kontoanlage pro
+    Zeile in der Edge Function (Admin-API + `fn_finalize_invite` +
+    `fn_assign_role`, exakt wie beim Einzel-Invite aus M4).
+  - Validierung pro Zeile: fehlender Name, nicht erlaubte Rolle
+    (`school_admin`/`principal` sind im Bulk-Import nie erlaubt —
+    Schulleitung bleibt CLI-only, Schuladmin-Ernennung bleibt ein
+    einzeln begründeter `fn_assign_role`-Aufruf), unbekannte Klasse,
+    Duplikat innerhalb derselben Datei.
+  - **Bewusste Lücke:** Es gibt noch keine Tabelle, die einen Schüler
+    einer Klasse zuordnet (`doc/DATA_MODEL.md`s Tabellenliste kennt nur
+    `class_staff_assignments` für Klassenleitungen). Die Klassenspalte
+    wird nur auf Existenz geprüft (referenzielle Integrität), aber nicht
+    persistiert — das ist M10-Schulorganisations-Arbeit, sobald es eine
+    solche Tabelle gibt.
+  - **Datei wählen → Text einfügen:** Bewusst kein nativer Datei-Picker
+    (`expo-document-picker`) ergänzt — keine neue native Abhängigkeit
+    ohne Möglichkeit, sie hier an einem echten Gerät/Simulator zu
+    verifizieren. Das Backend verarbeitet ohnehin nur bereits geparste
+    Zeilen, ein echter Picker lässt sich später ohne Backend-Änderung
+    nachrüsten.
+  - **Beim Testen gefunden und vor dem ersten Commit korrigiert:** zwei
+    `CASE`-Ausdrücke ohne expliziten Enum-Cast
+    (`import_row_validation_state`) scheiterten beim Insert/Update —
+    Postgres konnte den Text-Literal-Typ nicht automatisch ableiten.
+  - `src/features/identity/csv.ts`: eigener minimaler CSV-Parser
+    (Pflichtspalten `first_name,last_name,role_code`, optional
+    `class_name`; behandelt doppelte Anführungszeichen korrekt) mit
+    7 echten Unit-Tests — keine neue Abhängigkeit für reines Text-Parsen.
+  - Alle 8 Testfälle (`007-m5-csv-import.sql`) gegen Wegwerf-Postgres
+    **und** identisch gegen die echte Instanz verifiziert.
 
 ## Sicherheit
 

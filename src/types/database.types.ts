@@ -47,6 +47,10 @@ export type Database = {
         Args: { p_target_profile_id: string; p_reason: string };
         Returns: string;
       };
+      fn_stage_csv_import: {
+        Args: { p_rows: unknown; p_reason: string };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

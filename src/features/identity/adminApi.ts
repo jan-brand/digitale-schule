@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { CampusError } from "@/lib/errors";
+import { CsvImportRow } from "@/features/identity/csv";
 
 // Typed wrappers for M4's privileged member-management operations.
 // Everything except inviteUser calls a SECURITY DEFINER Postgres
@@ -174,5 +175,67 @@ export async function issueTeacherResetCode(targetProfileId: string, reason: str
     p_reason: reason,
   });
   if (error || !data) throw toCampusError(error, "Reset-Code konnte nicht erzeugt werden.");
+  return data;
+}
+
+// --- CSV-Import (M5 part 2) -------------------------------------------
+// Staging/confirming are plain RPC calls (no service-role needed); only
+// the actual account creation inside admin-import-csv-process needs the
+// Admin API, so only that step is an Edge Function — see
+// supabase/migrations/20261014240001_m5_csv_import.sql.
+
+export interface ImportJobRow {
+  rowNumber: number;
+  validationState: "pending" | "valid" | "error" | "imported";
+  errorCode: string | null;
+  rowData: CsvImportRow;
+}
+
+export async function stageCsvImport(rows: CsvImportRow[], reason: string): Promise<string> {
+  const { data, error } = await supabase.rpc("fn_stage_csv_import", {
+    p_rows: rows,
+    p_reason: reason,
+  });
+  if (error || !data) throw toCampusError(error, "Import konnte nicht vorbereitet werden.");
+  return data;
+}
+
+interface ImportJobRowDb {
+  row_number: number;
+  validation_state: ImportJobRow["validationState"];
+  error_code: string | null;
+  row_data: CsvImportRow;
+}
+
+export async function listImportJobRows(jobId: string): Promise<ImportJobRow[]> {
+  const { data, error } = await supabase
+    .from("import_job_rows")
+    .select("row_number, validation_state, error_code, row_data")
+    .eq("job_id", jobId)
+    .order("row_number")
+    .returns<ImportJobRowDb[]>();
+
+  if (error) throw toCampusError(error, "Importvorschau konnte nicht geladen werden.");
+  return (data ?? []).map((row) => ({
+    rowNumber: row.row_number,
+    validationState: row.validation_state,
+    errorCode: row.error_code,
+    rowData: row.row_data,
+  }));
+}
+
+export interface ProcessImportResult {
+  imported: number;
+  failed: number;
+}
+
+export async function confirmAndProcessCsvImport(jobId: string): Promise<ProcessImportResult> {
+  const { data, error } = await supabase.functions.invoke<ProcessImportResult | { error: string }>(
+    "admin-import-csv-process",
+    { body: { jobId } },
+  );
+  if (error || !data || "error" in data) {
+    throw new CampusError("unauthorized", "Import konnte nicht ausgeführt werden.");
+  }
   return data;
 }
