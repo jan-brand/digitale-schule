@@ -379,6 +379,61 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
   - **Nicht visuell im Browser verifiziert** (kein Browser-Tool in
     dieser Sitzung verfügbar) — nur `typecheck`/`lint`/`test`/
     `web:build` (jetzt mit `/school`) bestanden.
+- **M8 (Foundation-UI-Komponenten): abgeschlossen** — neue
+  `src/components/ui/{LoadingState,EmptyState,ErrorState,Badge,Dialog,
+  ConfirmDialog,ThemeToggle,PermissionGate,PasswordField,
+  DashboardWidget,WidgetEditControls}.tsx` und
+  `src/components/layout/ResponsiveDataList.tsx`, plus ein echter
+  `danger`-Button-Variant (vorher gab es nur primary/secondary).
+  - Nicht nur Katalog — direkt in bestehende Screens zurückgezogen:
+    `admin/users.tsx` nutzt jetzt `ResponsiveDataList` (Tabelle ab
+    768px, Kartenliste darunter) + `ConfirmDialog` mit Pflichtbegründung
+    für Sperren/Reaktivieren/Reset-Code (vorher ohne jede Bestätigung
+    ausgeführt — echte Lücke, beim Umbau behoben, nicht nur
+    kosmetisch); `settings.tsx` nutzt `ThemeToggle`; `login.tsx`/
+    `recover.tsx` nutzen `PasswordField` (SCR-01 fordert explizit
+    „Anzeigen/Verbergen", vorher fehlte das).
+  - `ConfirmDialog`/`Dialog` sind reine UI — sie ersetzen nicht die
+    serverseitige Pflichtbegründung, die jede betroffene SECURITY
+    DEFINER-Funktion bereits unabhängig durchsetzt.
+  - Bewusst nicht gebaut (kein aktueller Bedarf): `Select`, `Checkbox`,
+    `IconButton`, `Toast`, `Breadcrumbs` — Katalog wird bei Bedarf
+    erweitert statt vorab vollständig durchgebaut.
+- **M9 (Dashboard und Personalisierung): abgeschlossen** —
+  `src/app/(app)/dashboard.tsx`, `src/components/dashboard/widgets/
+  {MyCampusWidget,MyAccountWidget,MyAssignmentsWidget,
+  AdministrationWidget,ModulesWidget,SecurityNoticeWidget}.tsx`,
+  `src/features/dashboard/useMyAssignments.ts`, nach `doc/UI_UX_
+  SPECIFICATION.md` §6 (Runde 11):
+  - W-01–W-06 wie spezifiziert: W-01 „Mein Campus" fest oben, nicht
+    personalisierbar; W-02 „Mein Konto"; W-03 „Meine Zuordnungen" aus
+    echten `course_memberships`- und aktiven
+    `class_staff_assignments`-Zeilen (RLS-beschränkt auf eigene
+    `user_id`/`membership_id`) — **kein** erfundener Stundenplan, keine
+    Noten (§6.7 verbietet das); W-04 „Verwaltung" nur bei
+    `hasAdminAccess`, mit echter Mitgliederzahl (RLS-gezählt) statt
+    Platzhalter; W-05 „Module" nur echte, funktionierende Routen; W-06
+    „Sicherheitshinweis" nur bei echtem Zustand (unverifizierte
+    Kontakt-E-Mail — der einzige real vorhandene Signaltyp), nicht
+    ausblendbar solange er gilt.
+  - Personalisierung (§6.5): W-02/W-03/W-04/W-05 per
+    `WidgetEditControls` verschiebbar/größenänderbar/ausblendbar,
+    „Standard wiederherstellen" setzt eine aktuell zulässige
+    Rollenvorlage zurück. **Nur lokal persistiert** (AsyncStorage,
+    dasselbe Muster wie Theme/Sidebar) — nicht die vom Dokument
+    letztlich gewünschte serverseitige Pro-Konto-Persistenz; bewusste
+    Vereinfachung, nicht verschwiegen.
+  - Bei Rollenverlust/Rechteentzug werden nicht mehr zulässige Widgets
+    aus der gespeicherten Reihenfolge entfernt (`reconcile()`), nie aus
+    einer veralteten lokalen Präferenz wiederhergestellt (§6.4).
+  - Rollenansicht-Auswahl (§6.4) nur bei mehreren aktiven Rollen
+    sichtbar, steuert nur Darstellungsschwerpunkt, keine Navigation/
+    Rechte; **nicht persistiert** — laut Dokument selbst offene Frage
+    12.8, hier bewusst nicht vorweggenommen.
+  - Verifiziert: `typecheck`/`lint`/`test`/`web:build` bestehen; **nicht
+    visuell im Browser geprüft** (kein Browser-Tool verfügbar) —
+    insbesondere die Rollenfokus-Sortierung und das Ein-/Ausblenden
+    wurden nicht interaktiv getestet.
 
 ## Sicherheit
 

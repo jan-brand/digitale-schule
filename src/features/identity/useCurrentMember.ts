@@ -9,6 +9,9 @@ export interface CurrentMember {
   schoolName: string;
   firstName: string;
   lastName: string;
+  status: string;
+  contactEmail: string | null;
+  contactEmailVerifiedAt: string | null;
   roles: RoleCode[];
   hasAdminAccess: boolean;
 }
@@ -16,8 +19,14 @@ export interface CurrentMember {
 interface CurrentMemberRow {
   id: string;
   school_id: string;
+  status: string;
   schools: { name: string } | null;
-  profiles: { first_name: string; last_name: string } | null;
+  profiles: {
+    first_name: string;
+    last_name: string;
+    contact_email: string | null;
+    contact_email_verified_at: string | null;
+  } | null;
   role_assignments: { revoked_at: string | null; roles: { code: RoleCode } | null }[] | null;
 }
 
@@ -45,7 +54,7 @@ export function useCurrentMember() {
     supabase
       .from("school_memberships")
       .select(
-        "id, school_id, schools(name), profiles(first_name, last_name), role_assignments(revoked_at, roles(code))",
+        "id, school_id, status, schools(name), profiles(first_name, last_name, contact_email, contact_email_verified_at), role_assignments(revoked_at, roles(code))",
       )
       .eq("user_id", session.user.id)
       .maybeSingle()
@@ -68,6 +77,9 @@ export function useCurrentMember() {
           schoolName: row.schools?.name ?? "",
           firstName: row.profiles?.first_name ?? "",
           lastName: row.profiles?.last_name ?? "",
+          status: row.status,
+          contactEmail: row.profiles?.contact_email ?? null,
+          contactEmailVerifiedAt: row.profiles?.contact_email_verified_at ?? null,
           roles,
           hasAdminAccess: roles.includes("school_admin") || roles.includes("principal"),
         });
