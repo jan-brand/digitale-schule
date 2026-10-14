@@ -1,4 +1,4 @@
-// Hand-written placeholder for Supabase's generated database types.
+    // Hand-written placeholder for Supabase's generated database types.
 //
 // Run `npm run db:types` with SUPABASE_DB_URL pointing at a reachable
 // Postgres instance to regenerate this properly — blocked in this

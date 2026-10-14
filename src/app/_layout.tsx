@@ -1,4 +1,5 @@
-import { Redirect, Slot, useSegments } from "expo-router";
+import { Slot, useRootNavigationState, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
@@ -9,22 +10,31 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 // real security boundary regardless of what this guard does — this is
 // UX only (doc/ARCHITECTURE.md: "Clientseitige School-ID wird nie als
 // Autorisierungsnachweis anerkannt" applies to the same principle here).
+//
+// Must always render `children` (the Slot) on every render, including
+// the very first one — returning null while `loading` is true, as an
+// earlier version did, means the router's navigator never mounts, and
+// a later <Redirect> then throws "Attempted to navigate before
+// mounting the Root Layout component", leaving a permanently blank
+// page. Redirecting is instead done imperatively in an effect, gated
+// on the navigator actually being ready (useRootNavigationState).
 function Guard({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   const segments = useSegments();
+  const router = useRouter();
+  const navigationState = useRootNavigationState();
 
-  if (loading) {
-    return null;
-  }
+  useEffect(() => {
+    if (!navigationState?.key || loading) return;
 
-  const inAuthGroup = segments[0] === "(auth)";
+    const inAuthGroup = segments[0] === "(auth)";
 
-  if (!session && !inAuthGroup) {
-    return <Redirect href="/(auth)/login" />;
-  }
-  if (session && inAuthGroup) {
-    return <Redirect href="/(app)/dashboard" />;
-  }
+    if (!session && !inAuthGroup) {
+      router.replace("/(auth)/login");
+    } else if (session && inAuthGroup) {
+      router.replace("/(app)/dashboard");
+    }
+  }, [navigationState?.key, loading, session, segments, router]);
 
   return <>{children}</>;
 }
