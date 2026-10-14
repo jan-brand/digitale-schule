@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/providers/ThemeProvider";
+import { ResponsiveDataList } from "@/components/layout/ResponsiveDataList";
 import {
   SchoolMember,
   inviteUser,
@@ -15,14 +20,15 @@ import {
   suspendMembership,
 } from "@/features/identity/adminApi";
 
-// Minimal but real M4 admin screen: list members (RLS-scoped to the
-// admin's own school, see adminApi.listMembers), invite a new member,
-// suspend/reactivate a membership. Reusable DataTable/Dialog components
-// (M8) don't exist yet — plain list rows for now, not a placeholder.
-// Reachable only by school_admin/principal in practice: every action
-// here calls a SECURITY DEFINER function that re-checks the caller's
-// standing itself, so a non-admin visiting this screen directly can look
-// but every action will be rejected server-side regardless of this UI.
+type PendingAction =
+  | { kind: "toggle-status"; member: SchoolMember }
+  | { kind: "reset-code"; member: SchoolMember };
+
+// M4 admin screen, retrofitted in M8 onto the shared component set
+// (ResponsiveDataList, ConfirmDialog, Badge, Loading/Error states) —
+// every action still calls the same SECURITY DEFINER functions that
+// re-check the caller's standing themselves; nothing about the
+// authorization boundary changed here, only the presentation.
 export default function AdminUsersScreen() {
   const { theme } = useTheme();
   const [members, setMembers] = useState<SchoolMember[]>([]);
@@ -34,7 +40,9 @@ export default function AdminUsersScreen() {
   const [lastName, setLastName] = useState("");
   const [inviteResult, setInviteResult] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
+
   const [resetCodeResult, setResetCodeResult] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -77,33 +85,31 @@ export default function AdminUsersScreen() {
     }
   }
 
-  async function handleIssueResetCode(member: SchoolMember) {
-    setActionError(null);
-    setResetCodeResult(null);
-    try {
-      const code = await issueTeacherResetCode(
-        member.profileId,
-        "Passwort-Reset über die Benutzerverwaltung angefordert",
-      );
-      setResetCodeResult(
-        `Code für ${member.firstName} ${member.lastName}: ${code} (einmalig gültig, 30 Minuten) — bitte persönlich weitergeben, nie per E-Mail.`,
-      );
-    } catch {
-      setActionError("Reset-Code konnte nicht erzeugt werden. Nur für Lehrkräfte/Admins bei Schülerkonten möglich.");
-    }
-  }
-
-  async function handleToggleStatus(member: SchoolMember) {
+  async function handleConfirmPendingAction(reason?: string) {
+    if (!pendingAction) return;
     setActionError(null);
     try {
-      if (member.status === "active") {
-        await suspendMembership(member.membershipId, "Über die Benutzerverwaltung gesperrt");
+      if (pendingAction.kind === "toggle-status") {
+        const { member } = pendingAction;
+        if (member.status === "active") {
+          await suspendMembership(member.membershipId, reason ?? "Über die Benutzerverwaltung gesperrt");
+        } else {
+          await reactivateMembership(member.membershipId, reason ?? "Über die Benutzerverwaltung reaktiviert");
+        }
+        await reload();
       } else {
-        await reactivateMembership(member.membershipId, "Über die Benutzerverwaltung reaktiviert");
+        const code = await issueTeacherResetCode(
+          pendingAction.member.profileId,
+          reason ?? "Passwort-Reset über die Benutzerverwaltung angefordert",
+        );
+        setResetCodeResult(
+          `Code für ${pendingAction.member.firstName} ${pendingAction.member.lastName}: ${code} (einmalig gültig, 30 Minuten) — bitte persönlich weitergeben, nie per E-Mail.`,
+        );
       }
-      await reload();
     } catch {
       setActionError("Aktion fehlgeschlagen. Bitte Berechtigung prüfen.");
+    } finally {
+      setPendingAction(null);
     }
   }
 
@@ -135,40 +141,83 @@ export default function AdminUsersScreen() {
         </Text>
       ) : null}
 
-      <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
-        <Text variant="body">Mitglieder</Text>
-        {loading ? <Text variant="caption">Lädt…</Text> : null}
-        {error ? <Text style={{ color: "#D92D20" }}>{error}</Text> : null}
-        {!loading && !error && members.length === 0 ? (
-          <Text variant="caption">Keine Mitglieder gefunden.</Text>
-        ) : null}
-        {members.map((member) => (
-          <Card key={member.membershipId} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <View>
-              <Text>
-                {member.firstName} {member.lastName}
-              </Text>
-              <Text variant="caption">
-                {member.roles.join(", ") || "keine Rolle"} · {member.status}
-              </Text>
-            </View>
-            <View style={{ flexDirection: "row", gap: theme.spacing.xs }}>
-              {member.roles.includes("student") ? (
+      <View style={{ marginTop: theme.spacing.lg }}>
+        <Text variant="body" style={{ marginBottom: theme.spacing.sm }}>
+          Mitglieder
+        </Text>
+        {loading ? <LoadingState label="Mitglieder werden geladen…" /> : null}
+        {error ? <ErrorState message={error} onRetry={reload} /> : null}
+        {!loading && !error ? (
+          <ResponsiveDataList
+            rows={members}
+            rowKey={(m) => m.membershipId}
+            emptyMessage="Keine Mitglieder gefunden."
+            columns={[
+              {
+                key: "name",
+                header: "Name",
+                render: (m) => <Text>{`${m.firstName} ${m.lastName}`}</Text>,
+              },
+              {
+                key: "roles",
+                header: "Rollen",
+                render: (m) => (
+                  <View style={{ flexDirection: "row", gap: theme.spacing.xs, flexWrap: "wrap" }}>
+                    {m.roles.length === 0 ? <Text variant="caption">keine Rolle</Text> : null}
+                    {m.roles.map((role) => (
+                      <Badge key={role} label={role} />
+                    ))}
+                  </View>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (m) => (
+                  <Badge label={m.status} tone={m.status === "active" ? "success" : "warning"} />
+                ),
+              },
+            ]}
+            renderActions={(member) => (
+              <>
+                {member.roles.includes("student") ? (
+                  <Button
+                    label="Reset-Code"
+                    variant="secondary"
+                    onPress={() => setPendingAction({ kind: "reset-code", member })}
+                  />
+                ) : null}
                 <Button
-                  label="Reset-Code"
-                  variant="secondary"
-                  onPress={() => handleIssueResetCode(member)}
+                  label={member.status === "active" ? "Sperren" : "Reaktivieren"}
+                  variant={member.status === "active" ? "danger" : "secondary"}
+                  onPress={() => setPendingAction({ kind: "toggle-status", member })}
                 />
-              ) : null}
-              <Button
-                label={member.status === "active" ? "Sperren" : "Reaktivieren"}
-                variant="secondary"
-                onPress={() => handleToggleStatus(member)}
-              />
-            </View>
-          </Card>
-        ))}
+              </>
+            )}
+          />
+        ) : null}
       </View>
+
+      <ConfirmDialog
+        visible={pendingAction !== null}
+        title={
+          pendingAction?.kind === "reset-code"
+            ? "Reset-Code erzeugen"
+            : pendingAction?.member.status === "active"
+              ? "Mitgliedschaft sperren"
+              : "Mitgliedschaft reaktivieren"
+        }
+        message={
+          pendingAction
+            ? `${pendingAction.member.firstName} ${pendingAction.member.lastName}`
+            : ""
+        }
+        requireReason
+        destructive={pendingAction?.kind === "toggle-status" && pendingAction.member.status === "active"}
+        confirmLabel="Bestätigen"
+        onConfirm={handleConfirmPendingAction}
+        onCancel={() => setPendingAction(null)}
+      />
     </Screen>
   );
 }

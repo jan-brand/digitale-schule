@@ -6,8 +6,10 @@ import { Text } from "./Text";
 interface ButtonProps extends Omit<PressableProps, "style"> {
   label: string;
   loading?: boolean;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "danger";
 }
+
+const DANGER_COLOR = "#D92D20";
 
 export function Button({
   label,
@@ -20,8 +22,9 @@ export function Button({
   const [focused, setFocused] = useState(false);
   const isDisabled = disabled || loading;
 
-  const backgroundColor = variant === "primary" ? theme.colors.action : "transparent";
-  const textColor = variant === "primary" ? theme.colors.surface : theme.colors.action;
+  const accentColor = variant === "danger" ? DANGER_COLOR : theme.colors.action;
+  const backgroundColor = variant === "primary" ? theme.colors.action : variant === "danger" ? DANGER_COLOR : "transparent";
+  const textColor = variant === "secondary" ? theme.colors.action : theme.colors.surface;
 
   return (
     <Pressable
@@ -39,7 +42,7 @@ export function Button({
           paddingHorizontal: theme.spacing.lg,
           opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
           borderWidth: variant === "secondary" || focused ? (focused ? 2 : 1) : 0,
-          borderColor: theme.colors.action,
+          borderColor: accentColor,
         },
       ]}
       {...rest}

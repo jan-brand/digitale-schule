@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PasswordField } from "@/components/ui/PasswordField";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/providers/AuthProvider";
@@ -56,11 +57,10 @@ export default function LoginScreen() {
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Input
+        <PasswordField
           label="Passwort"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
           errorMessage={error ?? undefined}
         />
         <Button label="Anmelden" onPress={handleSubmit} disabled={!canSubmit} loading={loading} />

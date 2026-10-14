@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PasswordField } from "@/components/ui/PasswordField";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -65,7 +66,7 @@ export default function RecoverScreen() {
         ) : (
           <>
             <Input label="Code" value={token} onChangeText={setToken} autoCapitalize="none" />
-            <Input label="Neues Passwort" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
+            <PasswordField label="Neues Passwort" value={newPassword} onChangeText={setNewPassword} />
             <Button
               label="Passwort setzen"
               onPress={handleRedeem}

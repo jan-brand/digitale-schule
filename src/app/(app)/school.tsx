@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -20,7 +22,9 @@ export default function SchoolScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     supabase
       .from("schools")
       .select("name, status")
@@ -35,12 +39,16 @@ export default function SchoolScreen() {
       });
   }, []);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   return (
     <Screen>
       <Text variant="title">Schule</Text>
       <Card style={{ marginTop: theme.spacing.lg }}>
-        {loading ? <Text variant="caption">Lädt…</Text> : null}
-        {error ? <Text style={{ color: "#D92D20" }}>{error}</Text> : null}
+        {loading ? <LoadingState /> : null}
+        {error ? <ErrorState message={error} onRetry={load} /> : null}
         {!loading && !error && school ? (
           <>
             <Text>{school.name}</Text>
