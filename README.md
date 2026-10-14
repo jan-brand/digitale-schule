@@ -186,8 +186,53 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     angelegte Accounts vorhanden).
   - Alle 4 Testdateien (`001`–`004`) von Hand gegen Wegwerf-Postgres
     **und** identisch gegen die echte Instanz verifiziert.
-- **Nächster Meilenstein (M4):** Benutzerverwaltung (Suche, Einladen,
-  Rollen-/Zusatzrechte-UI, Benutzername-Administration).
+- **Konformitätsnachtrag** (`20261014200001_conformance_fixes.sql`): zwei
+  im Vorab-Check für M4 gefundene, kleine Abweichungen von
+  `doc/DATA_MODEL.md` behoben — `school_years.status` und
+  `user_preferences.locale` fehlten; additiv, keine Backfill-Risiken.
+- **M4 (Benutzerverwaltung): abgeschlossen** — `20261014210001_m4_user_
+  management.sql` + `supabase/functions/admin-invite-user`:
+  - `internal.fn_suggest_username`: deterministischer, pro Schule
+    eindeutiger Vorschlag aus Vor-/Nachname (Umlaute gefaltet,
+    Kollisionen über numerischen Suffix aufgelöst); nicht direkt für
+    `authenticated` freigegeben — nur intern von `fn_finalize_invite`
+    genutzt, damit `internal.login_identifiers` wirklich nie client-seitig
+    abfragbar wird, auch nicht indirekt.
+  - `fn_finalize_invite`: legt Mitgliedschaft + Login-Identifier für ein
+    bereits per Auth-Admin-API angelegtes Konto an; prüft
+    `memberships.invite`-Berechtigung selbst serverseitig. Rollenvergabe
+    bleibt ein separater `fn_assign_role`-Aufruf (unverändert, inkl.
+    Selbstaufwertungs-/Principal-CLI-only-Schutz).
+  - `fn_set_username`: administrative Umbenennung, nur Schuladmin/
+    Schulleitung, erneute Eindeutigkeitsprüfung, auditiert (D-010).
+  - `fn_grant_permission`/`fn_revoke_permission`: einzig möglicher
+    Schreibweg für `permission_grants`. Schulleitung darf aus dem
+    Katalog delegieren, ohne das Recht selbst zu benötigen (D-018);
+    Schuladmin braucht dafür zuvor selbst `permissions.grant`; keine
+    Selbstvergabe.
+  - `supabase/functions/admin-invite-user`: App-seitiger Einladungsweg
+    (im Gegensatz zum CLI-/Service-Role-only `auth-provision-user`) —
+    leitet den JWT der aufrufenden Person bei jedem RPC-Aufruf weiter,
+    damit `fn_finalize_invite`/`fn_assign_role` ihre echte Autorisierung
+    gegen die tatsächlich anfragende Person prüfen; Service-Role-Key wird
+    ausschließlich für den Admin-API-Aufruf zur Kontoerstellung selbst
+    verwendet und nie an den Client zurückgegeben.
+  - `src/features/identity/adminApi.ts` + minimaler, echter Admin-Screen
+    (`src/app/(app)/admin/users.tsx`): Mitgliederliste, Einladen,
+    Sperren/Reaktivieren. Noch ohne die späteren DataTable/Dialog-
+    Komponenten (M8) — einfache, aber echte Listenansicht, keine
+    Platzhalter.
+  - Alle Autorisierungsregeln (kein Self-Grant, Schuladmin ohne Delegation
+    abgelehnt, Schulleitung kann direkt delegieren, Student kann nicht
+    einladen) sowohl gegen Wegwerf-Postgres als auch gegen die echte
+    Instanz verifiziert (`supabase/tests/database/005-m4-user-management.sql`).
+  - **Nicht live getestet:** das paketierte `admin-invite-user`
+    Edge-Function-Deployment selbst (gleiche Einschränkung wie bei M2:
+    kein Deno-Edge-Runtime-Deploy-Zugang hier) — die zugrunde liegenden
+    Bausteine (Auth-Admin-API, `fn_finalize_invite`, `fn_assign_role`)
+    wurden aber einzeln gegen die echte Instanz bestätigt.
+- **Nächster Meilenstein (M5):** CSV-Import, Lehrkraft-initiierter
+  Passwortreset-Workflow.
 
 ## Sicherheit
 
