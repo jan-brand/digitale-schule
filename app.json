@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Campus",
+    "slug": "campus-foundation",
+    "scheme": "campus",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "space.janbrand.campus"
+    },
+    "android": {
+      "package": "space.janbrand.campus"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [["expo-router", { "root": "./src/app" }]],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

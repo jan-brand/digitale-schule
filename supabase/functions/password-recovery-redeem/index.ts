@@ -1,0 +1,131 @@
+// POST { token, newPassword } -> 200 {} | 400 { error: "invalid_or_expired_code" } | 429 { error: "rate_limited" }
+//
+// Shared redemption for BOTH recovery paths (teacher_code and
+// verified_email use the same table/hash scheme — see
+// supabase/migrations/20261014230001_m5_password_reset.sql). Public,
+// pre-auth: the token itself is the only credential. The UPDATE...
+// RETURNING below claims the row atomically (consumed_at set in the same
+// statement that checks it's still claimable), so two concurrent
+// redemption attempts with the same token can't both succeed — "einmalig
+// verwendbar" (doc/SECURITY_AUTH.md).
+//
+// Rate limit (20261015120001_m15_recovery_rate_limit.sql): teacher_code
+// is an 8-digit numeric code, brute-forceable without a per-IP attempt
+// cap within its 30-minute validity window — verified_email's 32-byte
+// hex token doesn't need this, but both paths share this endpoint.
+import { sql } from "../_shared/db.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+const MAX_ATTEMPTS_PER_WINDOW = 10;
+const WINDOW_MINUTES = 15;
+
+const GENERIC_ERROR = new Response(JSON.stringify({ error: "invalid_or_expired_code" }), {
+  status: 400,
+  headers: { "Content-Type": "application/json" },
+});
+const RATE_LIMITED = new Response(JSON.stringify({ error: "rate_limited" }), {
+  status: 429,
+  headers: { "Content-Type": "application/json" },
+});
+
+function callerIp(req: Request): string {
+  // Apache sets this on every request it proxies through (see
+  // supabase.jan-brand.space-le-ssl.conf) — the first entry is the
+  // original client, later entries would be further intermediate
+  // proxies we don't have here. Falls back to a shared bucket if
+  // missing/malformed rather than failing open with no limit at all.
+  const forwarded = req.headers.get("x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  return first && first.length > 0 ? first : "unknown";
+}
+
+interface RedeemRequest {
+  token?: unknown;
+  newPassword?: unknown;
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method_not_allowed" }), { status: 405 });
+  }
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: "server_misconfigured" }), { status: 500 });
+  }
+
+  let body: RedeemRequest;
+  try {
+    body = await req.json();
+  } catch {
+    return GENERIC_ERROR;
+  }
+
+  const token = typeof body.token === "string" ? body.token.trim() : "";
+  const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+  if (!token || newPassword.length < 8) {
+    return GENERIC_ERROR;
+  }
+
+  const ip = callerIp(req);
+  // Opportunistic trim instead of a cron job — cheap, and this table
+  // only ever needs rows from the last WINDOW_MINUTES anyway.
+  await sql`delete from public.recovery_redeem_attempts where attempted_at < now() - interval '1 hour'`;
+  const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
+  const recentAttempts = await sql<{ count: string }[]>`
+    select count(*) from public.recovery_redeem_attempts
+    where ip_address = ${ip} and attempted_at > ${windowStart}
+  `;
+  if (Number(recentAttempts[0].count) >= MAX_ATTEMPTS_PER_WINDOW) {
+    return RATE_LIMITED;
+  }
+  await sql`insert into public.recovery_redeem_attempts (ip_address) values (${ip})`;
+
+  const tokenHash = await sha256Hex(token);
+
+  const claimed = await sql<{ id: string; school_id: string; user_id: string; method: string }[]>`
+    update public.password_reset_requests
+    set consumed_at = now()
+    where token_hash = ${tokenHash} and consumed_at is null and expires_at > now()
+    returning id, school_id, user_id, method
+  `;
+
+  if (claimed.length === 0) {
+    return GENERIC_ERROR;
+  }
+  const { id: requestId, school_id: schoolId, user_id: userId, method } = claimed[0];
+
+  const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      apikey: SERVICE_ROLE_KEY,
+    },
+    body: JSON.stringify({ password: newPassword }),
+  });
+
+  if (updateRes.status !== 200) {
+    // The code is already consumed at this point (atomic claim above) —
+    // deliberate: see the module comment on why we don't try to "give
+    // the code back" on a downstream failure.
+    return new Response(JSON.stringify({ error: "password_update_failed" }), { status: 502 });
+  }
+
+  // Direct insert (this connection runs as a trusted service role, same
+  // as every other Edge-Function-side write to tables with no
+  // `authenticated` grant) — there is no authenticated actor to attribute
+  // this to via fn_write_audit_event, so actor_user_id/actor_membership_id
+  // stay null; the method and request id make it traceable.
+  await sql`
+    insert into public.audit_events (school_id, action, target_type, target_id, outcome, metadata)
+    values (${schoolId}, 'password_reset.redeem', 'password_reset_request', ${requestId}, 'success', ${sql.json({ method })})
+  `;
+
+  return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+});
