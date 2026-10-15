@@ -64,8 +64,19 @@ select is(
 );
 
 -- 3) Confirming hands back exactly the one valid row.
+--
+-- psql's `:'var'` substitution does not fire inside a $$...$$
+-- dollar-quoted string (confirmed by direct test) — results_eq/
+-- throws_ok take their query as a string executed later *inside* the
+-- pgTAP function, so a bare `:'job_id'` there is sent to the server
+-- completely unsubstituted, which Postgres's own parser then rejects
+-- as a syntax error. format(...) builds the query text instead, with
+-- `:'job_id'` substituted by psql *outside* any dollar-quoting, where
+-- it still works normally. Found while auditing doc/ACCEPTANCE.md
+-- Gate 3 ("CI Staging erfolgreich") — this had silently failed every
+-- CI run since this test was written.
 select results_eq(
-  $$ select row_number from public.fn_confirm_csv_import(:'job_id'::uuid, 'proceeding with import') $$,
+  format($$ select row_number from public.fn_confirm_csv_import(%L::uuid, 'proceeding with import') $$, :'job_id'),
   $$ values (1) $$,
   'fn_confirm_csv_import returns only the valid row'
 );
@@ -73,7 +84,7 @@ select results_eq(
 -- 4) A second confirm attempt on the same (now 'importing') job fails —
 -- double-execution protection.
 select throws_ok(
-  $$ select public.fn_confirm_csv_import(:'job_id'::uuid, 'retry attempt') $$,
+  format($$ select public.fn_confirm_csv_import(%L::uuid, 'retry attempt') $$, :'job_id'),
   'job_not_in_validated_state',
   'A job already claimed cannot be confirmed a second time'
 );

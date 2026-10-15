@@ -72,20 +72,34 @@ select is(
 );
 
 -- 6) password_reset_requests / import_jobs have RLS enabled+forced and
--- no insert grant for authenticated yet (M5 builds the real write path).
+-- no insert grant for authenticated — these are Edge-Function-only
+-- tables (service-role connection bypasses RLS entirely), never meant
+-- to be reachable from a client session at all, now or later. The
+-- expected error message was updated once M5/M14/M15 actually built
+-- out this table family: `enable/force row level security` with zero
+-- policies defined denies via RLS itself ("new row violates row-level
+-- security policy"), not via a bare GRANT-level denial ("permission
+-- denied for table ...") as this test originally assumed back when M3
+-- had defined these tables but M5's RLS posture for them wasn't
+-- decided yet — same end result (authenticated can never write here),
+-- different SQLSTATE message. Found while auditing doc/ACCEPTANCE.md
+-- Gate 3 ("CI Staging erfolgreich") — this had been silently failing
+-- in CI since M5, unnoticed because this session's own verification
+-- always used throwaway Postgres + manual psql, never the actual
+-- `supabase test db` / pgTAP path CI runs.
 select pg_temp.act_as('10000000-0000-0000-0000-00000000000a');
 select throws_ok(
   $$ insert into public.password_reset_requests (school_id, user_id, method, token_hash, expires_at)
      values ('a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-0000000000a1', 'teacher_code', 'x', now() + interval '1 hour') $$,
-  'permission denied for table password_reset_requests',
-  'No client write grant on password_reset_requests yet (M5 will add the Edge Function path)'
+  'new row violates row-level security policy for table "password_reset_requests"',
+  'No client write grant on password_reset_requests — Edge-Function-only table'
 );
 
 -- 7) Same for import_jobs.
 select throws_ok(
   $$ insert into public.import_jobs (school_id, state) values ('a0000000-0000-0000-0000-000000000001', 'pending') $$,
-  'permission denied for table import_jobs',
-  'No client write grant on import_jobs yet (M5 will add the CSV import path)'
+  'new row violates row-level security policy for table "import_jobs"',
+  'No client write grant on import_jobs — Edge-Function-only table'
 );
 
 select * from finish();
