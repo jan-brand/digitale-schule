@@ -647,11 +647,8 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
   E-Mail-gestützte Anfrage, blieb unverifiziert — der
   `EMAIL_PROVIDER=log`-Versand landet nur in den Edge-Function-Logs auf
   dem Server, zu denen diese Sitzung keinen Shell-Zugriff hat.)
-- **M14 (echte E-Mail-Verifizierung, POC-05; Playwright-E2E-Suite):**
-  Datenbank- und Client-Seite abgeschlossen und lokal vollständig
-  verifiziert; **Live-Verifikation gegen den echten Server noch
-  ausstehend**, weil die neue Edge Function noch deployt werden muss
-  (siehe unten).
+- **M14 (echte E-Mail-Verifizierung, POC-05; Playwright-E2E-Suite):
+  vollständig abgeschlossen, inklusive Live-Verifikation.**
   - **Sicherheitsbefund dabei entdeckt und sofort mitbehoben**
     (`20261015000003_m14_email_verification.sql`): `public.profiles`
     hatte seit M3 nur ein tabellenweites `grant ... update ...` an
@@ -699,12 +696,31 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     (inkl. der neuen `/verify-email`-Route im Build-Output). Auf dem
     echten Server angewendet (Backup vorher, `NOTIFY pgrst, 'reload
     schema'` danach, in `supabase_migrations.schema_migrations`
-    vermerkt) — aber die Edge Function selbst liegt noch nicht auf dem
-    Server (gleiche SSH-Beschränkung wie beim `admin-invite-user`-
-    Deployment in einer früheren Phase dieser Sitzung: diese Sitzung
-    hat keinen Datei-Upload-Zugriff, nur Port-Forwarding). **Damit ist
-    der komplette E-Mail-Verifizierungs-Fluss noch nicht live
-    durchgespielt** — nur bis zur Datenbank-Ebene.
+    vermerkt).
+  - **Edge Function deployt und live durchgespielt** (SFTP-Upload +
+    Stack-Neustart vom Nutzer selbst ausgeführt, gleiches Verfahren wie
+    beim `admin-invite-user`-Deployment — diese Sitzung hat weiterhin
+    nur Port-Forwarding, keinen Datei-Upload-Zugriff). Der Neustart war
+    wieder ein voller `supabase start` (neue `sb_publishable_…`/
+    `sb_secret_…`-Schlüssel wurden dabei erneut ausgegeben, als
+    exponiert zu behandeln, siehe unten) — diesmal ohne den M13-NULL-
+    Spalten-Bug von letztem Mal (nachträglich geprüft:
+    `auth.users`-Bookkeeping-Spalten weiterhin durchgängig `''` statt
+    `NULL`, GoTrue-Health-Endpoint 200, alle M14-Objekte haben den
+    Neustart unbeschadet überstanden). Danach live über echten Login
+    (Puppeteer, `demo-a`/`admin.a`) bestätigt: Kontakt-E-Mail speichern
+    → `200` von `email-verification-request` →
+    `email_verification_requests`-Zeile mit korrekten
+    `school_id`/`profile_id`/`contact_email` angelegt. Den eigentlichen
+    Mail-Versand kann diese Sitzung nicht einsehen
+    (`EMAIL_PROVIDER=log` schreibt nur in Server-seitige Edge-Function-
+    Logs, kein Shell-Zugriff) — stattdessen den Bestätigungs-Teil separat
+    mit einem selbst eingefügten Token-Datensatz durchgespielt: echter,
+    nicht eingeloggter Browser-Kontext auf `/verify-email?token=...`
+    zeigte „E-Mail-Adresse erfolgreich verifiziert", `profiles.
+    contact_email_verified_at` wurde tatsächlich gesetzt, Token war
+    danach verbraucht (Einmaligkeit bestätigt). Testdaten (E-Mail,
+    Verifizierungs-Zeilen) anschließend wieder zurückgesetzt.
   - **Playwright als dauerhafte E2E-Suite eingerichtet**
     (`playwright.config.ts`, `e2e/`), ersetzt die bisherigen Ad-hoc-
     Puppeteer-Skripte für die sicher wiederholbaren Pfade:
