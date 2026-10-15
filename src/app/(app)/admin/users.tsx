@@ -114,7 +114,7 @@ export default function AdminUsersScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Mitglieder">
       <Text variant="title">Benutzerverwaltung</Text>
 
       <Card style={{ marginTop: theme.spacing.lg }}>

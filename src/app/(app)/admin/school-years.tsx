@@ -56,7 +56,7 @@ export default function SchoolYearsScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Schuljahre">
       <Text variant="title">Schuljahre</Text>
 
       <Card style={{ marginTop: theme.spacing.lg }}>

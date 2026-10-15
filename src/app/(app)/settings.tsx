@@ -60,7 +60,7 @@ export default function SettingsScreen() {
   const isVerified = Boolean(member?.contactEmail && member?.contactEmailVerifiedAt);
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Einstellungen">
       <Text variant="title">Einstellungen</Text>
 
       <Text variant="body" style={{ marginTop: theme.spacing.lg }}>

@@ -839,6 +839,56 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
   jeder Punkt jetzt mit konkretem Beleg (Testdatei, Live-Check oder
   offen mit Begründung) abgehakt oder als `[~]` (teilweise) markiert.
 
+- **M17 (fehlender Schulleitungs-Testaccount): abgeschlossen.** Der in
+  M16 zurückgenommene `principal`-Seed-Account wurde richtig gefixt
+  statt vermieden: `002-iam-invariants.sql`/`003-security-hotfix.sql`
+  revoken Principal A's Rolle jetzt innerhalb ihrer eigenen
+  `begin`/`rollback`-Transaktion, bevor der jeweilige
+  Letzter-Admin-Test läuft (gleiches Muster, das `003` bereits für
+  seinen eigenen Test-Principal nutzte) — alle 8 pgTAP-Dateien
+  bestehen wieder, `seed.sql` hat jetzt alle sechs in Gate 2
+  geforderten Testakteure.
+- **M18 (WCAG 2.2 AA / Tastaturprüfung): abgeschlossen.** Kein echtes
+  Screenreader-Tool in dieser Umgebung verfügbar — stattdessen
+  `axe-core` (automatisierte WCAG-2a/2aa/21aa/22aa-Prüfung) über
+  Puppeteer gegen alle 13 Screens laufen lassen (eingeloggt und
+  ausgeloggt). Ein **durchgängiger Verstoß auf jedem einzelnen
+  Screen**: fehlendes `<title>`-Element (WCAG 2.4.2 „Page Titled",
+  Level A) — Expo Routers `Slot`-basiertes Layout (kein Stack-
+  Navigator) setzt `document.title` nie. Fix: `Screen`-Komponente
+  bekommt eine neue `title`-Prop, die auf Web `document.title`
+  setzt (`"<Titel> – Campus"`); alle 16 Screen-Aufrufe im Code mit
+  einem passenden Titel versehen. Danach: 0 Verstöße über alle 13
+  Screens.
+
+  Zusätzlich ein echter Tastaturtest (Puppeteer, `page.keyboard`):
+  kompletter Login-Formular-Ausfüllung-und-Absenden-Flow ohne Maus
+  erfolgreich (`Tab`/`Enter`), kein Keyboard-Trap über 10
+  aufeinanderfolgende `Tab`-Drücke, der deaktivierte
+  „Anmelden"-Button wird korrekt aus der Tab-Reihenfolge
+  ausgeschlossen, solange das Formular leer ist. Dabei die
+  `ChipPicker`-Komponente (Klassen-/Kurse-Formulare) genauer
+  geprüft: per Tastatur erreichbar, `Enter`/Leertaste lösen die
+  Auswahl visuell korrekt aus (Hintergrundfarbe ändert sich) — aber
+  der Auswahlzustand wurde **nicht für Screenreader exponiert**
+  (`role="button"` erlaubt laut ARIA-Spezifikation kein
+  `aria-selected`, und React Native Web bildet
+  `accessibilityState.checked` auch für `role="radio"` nicht auf
+  `aria-checked` ab). Fix: `role="button"` → `role="radio"` plus
+  `radiogroup` auf dem Container (korrekte Semantik für eine
+  Einfachauswahl-Chip-Gruppe) und `aria-checked` zusätzlich direkt
+  als Web-Prop gesetzt (dokumentierter RNWeb-Escape-Hatch für genau
+  diese Lücke) — live verifiziert: `aria-checked` wechselt jetzt
+  korrekt `false` → `true` nach `Enter`.
+
+  **Nicht geprüft**: echtes Screenreader-Verhalten (VoiceOver/NVDA/
+  JAWS) — axe-core und direkte ARIA-Attribut-Prüfung sind ein
+  Näherungswert, kein Ersatz für einen echten Screenreader-Durchlauf;
+  Farbkontrast wurde von axe-core automatisch mitgeprüft (keine
+  Verstöße gemeldet), aber nicht zusätzlich manuell nachgemessen;
+  native (iOS/Android) Zugänglichkeit wurde gar nicht geprüft (keine
+  Simulator-/Geräte-Umgebung in dieser Sitzung).
+
 ## Sicherheit
 
 Niemals Service-Role-Keys oder andere privilegierte Geheimnisse im Frontend

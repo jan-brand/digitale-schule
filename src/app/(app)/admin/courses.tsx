@@ -28,6 +28,14 @@ import {
 // Same minimal chip-picker as admin/classes.tsx — one more use case
 // still doesn't justify a shared Select component (see doc/README.md
 // M8 notes).
+// role="button" + accessibilityState.selected doesn't map to any ARIA
+// attribute at all on web (aria-selected isn't valid on a button per
+// the ARIA spec, so React Native Web silently drops it) — found via an
+// axe-core + manual keyboard audit: Enter/Space visibly toggled the
+// selection (background color), but nothing was exposed to a screen
+// reader. role="radio"/"radiogroup" is the correct semantics for a
+// mutually-exclusive single-select chip group and maps to aria-checked,
+// which IS valid for that role.
 function ChipPicker<T extends { id: string; label: string }>({
   options,
   selectedId,
@@ -39,12 +47,19 @@ function ChipPicker<T extends { id: string; label: string }>({
 }) {
   const { theme } = useTheme();
   return (
-    <View style={{ flexDirection: "row", gap: theme.spacing.xs, flexWrap: "wrap" }}>
+    <View accessibilityRole="radiogroup" style={{ flexDirection: "row", gap: theme.spacing.xs, flexWrap: "wrap" }}>
       {options.map((option) => (
         <Pressable
           key={option.id}
-          accessibilityRole="button"
-          accessibilityState={{ selected: selectedId === option.id }}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: selectedId === option.id, checked: selectedId === option.id }}
+          // React Native Web 0.19 doesn't map accessibilityState.checked
+          // to aria-checked for Pressable (verified directly: the DOM
+          // attribute stayed null even after a real Enter/Space press
+          // visibly toggled the selection) — setting the web ARIA
+          // attribute directly is the documented RNWeb escape hatch for
+          // exactly this gap.
+          aria-checked={selectedId === option.id}
           onPress={() => onSelect(option.id)}
           style={{
             borderWidth: 1,
@@ -168,7 +183,7 @@ export default function CoursesScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Kurse">
       <Text variant="title">Kurse</Text>
 
       <Card style={{ marginTop: theme.spacing.lg }}>

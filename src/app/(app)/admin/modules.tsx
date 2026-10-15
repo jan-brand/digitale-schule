@@ -24,7 +24,7 @@ const ACTIVE_MODULES = [
 export default function ModulesScreen() {
   const { theme } = useTheme();
   return (
-    <Screen scroll>
+    <Screen scroll title="Module">
       <Text variant="title">Module</Text>
       <Text variant="caption" style={{ marginTop: theme.spacing.xs }}>
         Foundation v0.1 hat noch keine optionalen Fachmodule zum Ein-/Ausschalten — die folgenden sind fest aktiv.

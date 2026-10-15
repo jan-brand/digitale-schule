@@ -69,7 +69,7 @@ export default function AdminImportScreen() {
   const canConfirm = jobId !== null && validRows.length > 0 && rows.every((r) => r.validationState !== "pending");
 
   return (
-    <Screen scroll>
+    <Screen scroll title="CSV-Import">
       <Text variant="title">CSV-Benutzerimport</Text>
       <Text variant="caption" style={{ marginTop: theme.spacing.xs }}>
         Spalten: first_name,last_name,role_code,class_name (class_name optional). Keine Passwörter

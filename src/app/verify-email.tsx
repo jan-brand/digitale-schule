@@ -30,7 +30,7 @@ export default function VerifyEmailScreen() {
   }, [token]);
 
   return (
-    <Screen>
+    <Screen title="E-Mail-Verifizierung">
       <Text variant="title">E-Mail-Verifizierung</Text>
       {state === "checking" ? <Text variant="body">Wird geprüft…</Text> : null}
       {state === "missing" ? <Text variant="body">Kein Verifizierungs-Code übergeben.</Text> : null}

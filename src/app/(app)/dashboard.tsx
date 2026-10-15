@@ -135,7 +135,7 @@ export default function DashboardScreen() {
 
   if (memberLoading || !layout || !member) {
     return (
-      <Screen>
+      <Screen title="Dashboard">
         <LoadingState label="Dashboard wird geladen…" />
       </Screen>
     );
@@ -156,7 +156,7 @@ export default function DashboardScreen() {
       : layout.order;
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Dashboard">
       <MyCampusWidget />
       {securityNotice ? <SecurityNoticeWidget message={securityNotice} /> : null}
 

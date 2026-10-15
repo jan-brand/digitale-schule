@@ -45,7 +45,7 @@ export default function AuditScreen() {
   }, [events, filter]);
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Audit-Protokoll">
       <Text variant="title">Audit</Text>
       <Text variant="caption" style={{ marginTop: theme.spacing.xs }}>
         Letzte {events.length} Einträge, nur diese Schule. Nur Aktion, Zielart, Ergebnis und Begründung — keine

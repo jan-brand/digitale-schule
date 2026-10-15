@@ -51,7 +51,7 @@ export default function SubjectsScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Fächer">
       <Text variant="title">Fächer</Text>
 
       <Card style={{ marginTop: theme.spacing.lg }}>

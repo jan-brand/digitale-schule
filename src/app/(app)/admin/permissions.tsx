@@ -99,7 +99,7 @@ export default function PermissionsScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Berechtigungen">
       <Text variant="title">Berechtigungen</Text>
       <Text variant="caption" style={{ marginTop: theme.spacing.xs }}>
         Nur die Schulleitung kann uneingeschränkt delegieren. Ein Schuladmin braucht dafür selbst bereits das Recht

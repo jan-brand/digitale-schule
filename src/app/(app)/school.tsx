@@ -44,7 +44,7 @@ export default function SchoolScreen() {
   }, [load]);
 
   return (
-    <Screen>
+    <Screen title="Mein Campus">
       <Text variant="title">Schule</Text>
       <Card style={{ marginTop: theme.spacing.lg }}>
         {loading ? <LoadingState /> : null}

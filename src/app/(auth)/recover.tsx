@@ -52,7 +52,7 @@ export default function RecoverScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen scroll title="Zugang wiederherstellen">
       <Text variant="title">Zugang wiederherstellen</Text>
 
       <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>

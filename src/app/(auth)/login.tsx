@@ -39,7 +39,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <Screen>
+    <Screen title="Anmelden">
       <Text variant="title">Anmelden</Text>
       <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
         <Input
