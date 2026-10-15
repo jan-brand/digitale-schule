@@ -10,6 +10,7 @@ const TITLES: Record<string, string> = {
   "/admin/import": "CSV-Import",
   "/admin/school-years": "Schuljahre",
   "/admin/classes": "Klassen",
+  "/admin/permissions": "Berechtigungen",
 };
 
 // Wraps every authenticated screen with the adaptive shell (doc/UI_UX_

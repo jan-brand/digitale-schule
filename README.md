@@ -504,6 +504,27 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     geprüft** — insbesondere der Chip-Picker, der Mitglieder-Picker mit
     Live-Filter und die globale Suche wurden nicht interaktiv
     getestet.
+- **M11 (Berechtigungen/Delegation-UI, SCR-11): abgeschlossen** —
+  `src/app/(app)/admin/permissions.tsx`, neue
+  `listPermissionCatalog()`/`listPermissionGrants()` in
+  `src/features/identity/adminApi.ts` (die Schreibfunktionen
+  `grantPermission`/`revokePermission` gab es schon seit M4 — nur die
+  UI fehlte bisher komplett).
+  - Zeigt aktive Delegationen (Mitglied, Berechtigungscode,
+    Begründung) mit Entzug per `ConfirmDialog` + Pflichtbegründung;
+    neue Delegation über Mitglied-Suche + Berechtigungs-Chip +
+    Pflichtbegründung.
+  - Die eigentliche Autorisierungsregel (D-018) bleibt serverseitig in
+    `fn_grant_permission`/`fn_revoke_permission`: nur die Schulleitung
+    kann uneingeschränkt delegieren; ein Schuladmin braucht dafür
+    selbst bereits `permissions.grant`. Das steht jetzt auch als
+    Hinweistext auf dem Screen, statt den Fehlschlag kommentarlos
+    unverständlich zu lassen.
+  - Verifiziert: `typecheck`/`lint`/`test`/`web:build` bestehen (neue
+    Route `/admin/permissions`); Tabellenschema (`permissions`,
+    `permission_grants`) zusätzlich live gegen den echten Server über
+    den Tunnel abgeglichen — passt exakt zu den neuen Queries. **Nicht
+    visuell im Browser geprüft.**
 
 ## Sicherheit
 

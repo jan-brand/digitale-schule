@@ -164,6 +164,73 @@ export async function revokePermission(permissionGrantId: string, reason: string
   if (error) throw toCampusError(error, "Zusatzrecht konnte nicht entzogen werden.");
 }
 
+export interface PermissionCatalogEntry {
+  id: string;
+  code: string;
+  sensitivity: string;
+  delegationClass: string;
+}
+
+// permissions is a fixed, system-managed catalog (doc/DATA_MODEL.md) —
+// readable by any active member (permissions_select_all), never
+// client-writable.
+export async function listPermissionCatalog(): Promise<PermissionCatalogEntry[]> {
+  const { data, error } = await supabase
+    .from("permissions")
+    .select("id, code, sensitivity, delegation_class")
+    .order("code");
+  if (error) throw toCampusError(error, "Berechtigungskatalog konnte nicht geladen werden.");
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    code: row.code,
+    sensitivity: row.sensitivity,
+    delegationClass: row.delegation_class,
+  }));
+}
+
+export interface PermissionGrant {
+  id: string;
+  membershipId: string;
+  firstName: string;
+  lastName: string;
+  permissionCode: string;
+  reason: string;
+  grantedAt: string;
+}
+
+interface PermissionGrantRow {
+  id: string;
+  membership_id: string;
+  reason: string;
+  granted_at: string;
+  permissions: { code: string } | null;
+  school_memberships: { profiles: { first_name: string; last_name: string } | null } | null;
+}
+
+// Active grants only (revoked_at is null) — same own-row-or-admin RLS
+// as everything else in this module; a non-admin only ever sees their
+// own grants here.
+export async function listPermissionGrants(): Promise<PermissionGrant[]> {
+  const { data, error } = await supabase
+    .from("permission_grants")
+    .select(
+      "id, membership_id, reason, granted_at, permissions(code), school_memberships(profiles(first_name, last_name))",
+    )
+    .is("revoked_at", null)
+    .order("granted_at", { ascending: false })
+    .returns<PermissionGrantRow[]>();
+  if (error) throw toCampusError(error, "Zusatzrechte konnten nicht geladen werden.");
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    membershipId: row.membership_id,
+    firstName: row.school_memberships?.profiles?.first_name ?? "",
+    lastName: row.school_memberships?.profiles?.last_name ?? "",
+    permissionCode: row.permissions?.code ?? "",
+    reason: row.reason,
+    grantedAt: row.granted_at,
+  }));
+}
+
 // Verfahren B (D-011/D-012): a teacher issues a one-time code for a
 // student in their own school and relays it out-of-band — never
 // emailed. fn_issue_teacher_reset_code re-checks the caller's standing
