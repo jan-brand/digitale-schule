@@ -30,6 +30,13 @@ interface CurrentMemberRow {
   role_assignments: { revoked_at: string | null; roles: { code: RoleCode } | null }[] | null;
 }
 
+// The role_assignments embed needs the explicit FK hint
+// (`!role_assignments_membership_id_school_id_fkey`) because
+// role_assignments has two FKs into school_memberships
+// (membership_id and assigned_by_membership_id) — PostgREST can't
+// pick one from bare `role_assignments(...)` and returns 300
+// Multiple Choices otherwise.
+//
 // Own-row-only query (D-002: one account, one school — there is nothing
 // to disambiguate). Used for role-aware navigation (doc/UI_UX_
 // SPECIFICATION.md §3 "Navigation nach Rollen") — this is UX only; the
@@ -54,7 +61,7 @@ export function useCurrentMember() {
     supabase
       .from("school_memberships")
       .select(
-        "id, school_id, status, schools(name), profiles(first_name, last_name, contact_email, contact_email_verified_at), role_assignments(revoked_at, roles(code))",
+        "id, school_id, status, schools(name), profiles(first_name, last_name, contact_email, contact_email_verified_at), role_assignments!role_assignments_membership_id_school_id_fkey(revoked_at, roles(code))",
       )
       .eq("user_id", session.user.id)
       .maybeSingle()

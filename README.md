@@ -562,6 +562,64 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     (noch keine echten Admin-Aktionen live ausgeführt), der
     Empty-State-Pfad des Audit-Screens greift also korrekt. **Nicht
     visuell im Browser geprüft.**
+- **M13 (echte Browser-Verifikation + drei real gefundene Bugs):
+  abgeschlossen** — zum ersten Mal lief die App wirklich im Browser
+  mit echtem Login gegen den echten Server (Puppeteer, da kein
+  Browser-Tool in dieser Sitzung verfügbar war). Dabei kamen drei
+  Bugs ans Licht, die alle bisherigen Prüfungen (immer nur rohes SQL
+  oder `psql`, nie die echte REST-API) nie hätten finden können:
+  1. **`20261015000001_m13_postgrest_profile_embed_fk.sql`**:
+     `school_memberships.user_id` und `profiles.id` verweisen beide
+     nur auf `auth.users.id`, aber es gab **keinen direkten
+     Fremdschlüssel zwischen `school_memberships` und `profiles`**.
+     PostgREST kann `select=...,profiles(...)` ohne echten FK nicht
+     auflösen (`PGRST200`) — jede Einbettung von `profiles` über
+     `school_memberships` schlug seit M4 fehl. Fix: fehlenden FK
+     ergänzt (zusätzlich zum bestehenden, kein Ersatz — beide
+     Constraints bleiben gleichzeitig erfüllbar, da `profiles.id`
+     selbst schon über `auth.users.id` läuft).
+  2. **`role_assignments`, `permission_grants` und
+     `course_memberships` haben jeweils *zwei bzw. drei* Fremdschlüssel
+     zur selben Zieltabelle** (z. B. `membership_id` vs.
+     `assigned_by_membership_id`/`issued_by_membership_id`) — bloßes
+     `role_assignments(...)` ist für PostgREST mehrdeutig (`PGRST201`,
+     „300 Multiple Choices"). Fix: explizite FK-Hinweise
+     (`role_assignments!role_assignments_membership_id_school_id_fkey(...)`
+     usw.) in `adminApi.ts`, `useCurrentMember.ts` und
+     `academicApi.ts` ergänzt — betraf M4s Mitgliederliste, M9s
+     „Mein Konto"-Widget, M11s Berechtigungsliste und M12s
+     Kursmitglieder gleichermaßen.
+  3. **`20261015000002_m13_profiles_admin_visibility.sql`**: `profiles`
+     hatte nur `profiles_select_own` (`id = auth.uid()`) — PostgREST
+     wendet die RLS der eingebetteten Tabelle auch bei Embeds an, also
+     bekam ein Schuladmin beim Laden anderer Mitgliederprofile über
+     `school_memberships`/Rosters immer `null` zurück. Sichtbar im
+     Screenshot: nur die eigene Zeile hatte einen Namen, alle anderen
+     waren leer — Rollen/Status stimmten, weil die nicht von diesem
+     Embed abhängen. Fix: neue `profiles_select_admin`-Policy
+     (`fn_is_school_admin(school_id) or fn_has_role(school_id,
+     'principal')`), zusätzlich zur bestehenden Eigenzugriffs-Policy.
+     Verifiziert (Wegwerf-Postgres): Admin sieht jetzt alle ~5 Profile
+     der eigenen Schule, weiterhin 0 aus der anderen Schule
+     (Tenant-Trennung bleibt intakt), ein Schüler sieht weiterhin nur
+     sich selbst.
+  - Nebenbei: `ResponsiveDataList`s Aktionsspalte war mit fixen 160px
+    zu schmal für zwei nebeneinanderliegende Buttons (im Screenshot
+    am rechten Rand abgeschnitten) — auf `minWidth: 220` mit
+    `flexWrap` umgestellt.
+  - Beide Migrationen vollständig nach etablierter Disziplin
+    verifiziert: Wegwerf-Postgres (inkl. neuer gezielter RLS-Checks
+    für die Profil-Sichtbarkeit), dann mit vorherigem `pg_dump`-Backup
+    gegen den echten Server angewendet, `NOTIFY pgrst, 'reload
+    schema'` danach (nötig, weil alle Migrationen per `psql` statt
+    über Supabase-Tooling laufen, das PostgREST sonst automatisch zum
+    Neuladen anstößt).
+  - Nach den Fixes per echtem Login (Puppeteer, `demo-a`/`admin.a`)
+    alle zwölf Admin-Screens plus Dashboard neu durchgeklickt:
+    Dashboard-Widgets, Mitgliederliste, Klassen/Fächer/Kurse-Roster
+    und Berechtigungsliste zeigen jetzt durchgängig echte Daten ohne
+    Konsolenfehler — zum ersten Mal in dieser Sitzung **tatsächlich
+    visuell im Browser verifiziert**, nicht nur Schema-Ebene.
 
 ## Sicherheit
 

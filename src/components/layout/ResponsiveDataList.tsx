@@ -52,7 +52,7 @@ export function ResponsiveDataList<T>({
               {col.header}
             </Text>
           ))}
-          {renderActions ? <View style={{ width: 160 }} /> : null}
+          {renderActions ? <View style={{ minWidth: 220 }} /> : null}
         </View>
         {rows.map((row) => (
           <View
@@ -71,7 +71,9 @@ export function ResponsiveDataList<T>({
               </View>
             ))}
             {renderActions ? (
-              <View style={{ width: 160, flexDirection: "row", gap: theme.spacing.xs }}>{renderActions(row)}</View>
+              <View style={{ minWidth: 220, flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, justifyContent: "flex-end" }}>
+                {renderActions(row)}
+              </View>
             ) : null}
           </View>
         ))}

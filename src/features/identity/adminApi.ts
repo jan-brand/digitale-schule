@@ -74,11 +74,18 @@ interface MemberRow {
 // already restricts this to "my own row" plus, for an admin/principal,
 // every row in the one school they administer — there is no
 // cross-school admin role to filter against (D-002).
+//
+// The role_assignments embed needs the explicit FK hint
+// (`!role_assignments_membership_id_school_id_fkey`) because
+// role_assignments has two FKs into school_memberships
+// (membership_id and assigned_by_membership_id) — PostgREST can't
+// pick one from bare `role_assignments(...)` and returns 300 Multiple
+// Choices otherwise.
 export async function listMembers(): Promise<SchoolMember[]> {
   const { data, error } = await supabase
     .from("school_memberships")
     .select(
-      "id, status, profiles(id, first_name, last_name), role_assignments(revoked_at, roles(code))",
+      "id, status, profiles(id, first_name, last_name), role_assignments!role_assignments_membership_id_school_id_fkey(revoked_at, roles(code))",
     )
     .returns<MemberRow[]>();
 
@@ -209,12 +216,16 @@ interface PermissionGrantRow {
 
 // Active grants only (revoked_at is null) — same own-row-or-admin RLS
 // as everything else in this module; a non-admin only ever sees their
-// own grants here.
+// own grants here. The school_memberships embed needs the explicit FK
+// hint: permission_grants has two FKs into school_memberships
+// (membership_id and issued_by_membership_id), so bare
+// `school_memberships(...)` is ambiguous to PostgREST (300 Multiple
+// Choices).
 export async function listPermissionGrants(): Promise<PermissionGrant[]> {
   const { data, error } = await supabase
     .from("permission_grants")
     .select(
-      "id, membership_id, reason, granted_at, permissions(code), school_memberships(profiles(first_name, last_name))",
+      "id, membership_id, reason, granted_at, permissions(code), school_memberships!permission_grants_membership_id_school_id_fkey(profiles(first_name, last_name))",
     )
     .is("revoked_at", null)
     .order("granted_at", { ascending: false })

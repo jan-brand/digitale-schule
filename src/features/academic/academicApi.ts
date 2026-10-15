@@ -220,10 +220,15 @@ interface CourseMembershipRow {
   school_memberships: { profiles: { first_name: string; last_name: string } | null } | null;
 }
 
+// course_memberships has three FKs into school_memberships
+// (membership_id alone, the composite membership_id+membership_school_id,
+// and user_id+membership_id) — bare `school_memberships(...)` is
+// ambiguous to PostgREST (300 Multiple Choices), so the embed needs
+// the explicit single-column FK hint.
 export async function listCourseMembers(courseId: string): Promise<CourseMember[]> {
   const { data, error } = await supabase
     .from("course_memberships")
-    .select("id, participant_role, school_memberships(profiles(first_name, last_name))")
+    .select("id, participant_role, school_memberships!course_memberships_membership_id_fkey(profiles(first_name, last_name))")
     .eq("course_id", courseId)
     .returns<CourseMembershipRow[]>();
   if (error) throw toCampusError(error, "Kursmitglieder konnten nicht geladen werden.");
