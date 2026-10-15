@@ -110,6 +110,25 @@ export type Database = {
         };
         Update: Partial<{ participant_role: "student" | "teacher" }>;
       };
+      profiles: {
+        Row: {
+          id: string;
+          school_id: string;
+          first_name: string;
+          last_name: string;
+          contact_email: string | null;
+          contact_email_verified_at: string | null;
+        };
+        Insert: {
+          id: string;
+          school_id: string;
+          first_name: string;
+          last_name: string;
+          contact_email?: string | null;
+          contact_email_verified_at?: string | null;
+        };
+        Update: Partial<{ first_name: string; last_name: string; contact_email: string }>;
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -144,6 +163,10 @@ export type Database = {
       fn_stage_csv_import: {
         Args: { p_rows: unknown; p_reason: string };
         Returns: string;
+      };
+      fn_confirm_contact_email_verification: {
+        Args: { p_token: string };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

@@ -28,7 +28,16 @@ function Guard({ children }: { children: React.ReactNode }) {
     if (!navigationState?.key || loading) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    // /verify-email must work both logged out (the email link may be
+    // opened on a different device than the one that requested
+    // verification) and logged in (the common case: same device,
+    // same tab) — so it is exempt from both redirect rules below,
+    // unlike every other route.
+    const isPublicRoute = segments[0] === "verify-email";
 
+    if (isPublicRoute) {
+      return;
+    }
     if (!session && !inAuthGroup) {
       router.replace("/(auth)/login");
     } else if (session && inAuthGroup) {

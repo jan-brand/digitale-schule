@@ -14,7 +14,8 @@
     "test": "jest",
     "db:types": "supabase gen types typescript --db-url \"$SUPABASE_DB_URL\" > src/types/database.types.ts",
     "cli": "tsx tools/campus-cli/index.ts",
-    "cli:typecheck": "tsc --noEmit -p tools/campus-cli/tsconfig.json"
+    "cli:typecheck": "tsc --noEmit -p tools/campus-cli/tsconfig.json",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.24.0",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@playwright/test": "^1.49.1",
     "@testing-library/react-native": "^12.5.2",
     "@types/jest": "^30.0.0",
     "@types/pg": "^8.23.1",

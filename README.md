@@ -620,6 +620,106 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     und Berechtigungsliste zeigen jetzt durchgängig echte Daten ohne
     Konsolenfehler — zum ersten Mal in dieser Sitzung **tatsächlich
     visuell im Browser verifiziert**, nicht nur Schema-Ebene.
+- **Formular-Verifikation nach M13 (echte Schreibpfade, nicht nur
+  Navigation): abgeschlossen** — M13 deckte Lesepfade ab; hier wurden
+  echte Formulare über die UI abgeschickt (Puppeteer, `demo-a`/`admin.a`):
+  Schuljahr/Fach/Klasse/Kurs anlegen (alle erfolgreich), eine
+  Berechtigungsdelegation als `school_admin` (korrekt mit der erwarteten
+  Fehlermeldung abgelehnt, D-018), **Mitglied einladen** über die
+  `admin-invite-user` Edge Function (erste echte End-to-End-Bestätigung
+  dieses Pfads überhaupt — `201` mit echtem `profileId`/`username`/
+  `initialPassword`, Konto erschien sofort in der Mitgliederliste), und
+  **CSV-Import** über die `admin-import-csv-process`-Edge-Function
+  (Vorschau erkannte eine fehlerhafte Zeile korrekt, Bestätigung legte
+  das gültige Konto an **und** wies es tatsächlich der Klasse zu — der
+  in M10 geschlossene Klassenzuordnungs-Pfad lief hier zum ersten Mal
+  live). Alle Testkonten/-datensätze anschließend wieder entfernt
+  (Auth-Konten über direktes, abhängigkeitsgeordnetes SQL, da der
+  generische Supabase-Admin-API-Löschendpunkt bei Konten mit
+  Rollenhistorie mit `23503` fehlschlägt — `role_assignments.membership_id`
+  hat bewusst kein `ON DELETE CASCADE`, verhindert also richtigerweise
+  versehentliches Hard-Delete von Konten mit Audit-Historie).
+  Zusätzlich das Lehrkraft-Code-Verfahren der Passwort-Wiederherstellung
+  (D-012, Verfahren B) komplett live durchgespielt: Code für
+  „Schüler A1" ausgestellt, in einem isolierten (nicht eingeloggten)
+  Browser-Kontext eingelöst, danach erfolgreicher Login mit dem neuen
+  Passwort bestätigt den ganzen Kreis. (Verfahren A, die
+  E-Mail-gestützte Anfrage, blieb unverifiziert — der
+  `EMAIL_PROVIDER=log`-Versand landet nur in den Edge-Function-Logs auf
+  dem Server, zu denen diese Sitzung keinen Shell-Zugriff hat.)
+- **M14 (echte E-Mail-Verifizierung, POC-05; Playwright-E2E-Suite):**
+  Datenbank- und Client-Seite abgeschlossen und lokal vollständig
+  verifiziert; **Live-Verifikation gegen den echten Server noch
+  ausstehend**, weil die neue Edge Function noch deployt werden muss
+  (siehe unten).
+  - **Sicherheitsbefund dabei entdeckt und sofort mitbehoben**
+    (`20261015000003_m14_email_verification.sql`): `public.profiles`
+    hatte seit M3 nur ein tabellenweites `grant ... update ...` an
+    `authenticated` plus `profiles_update_own`, das nur die **Zeile**
+    einschränkt (`id = auth.uid()`), nicht die **Spalten**. Jeder
+    eingeloggte Nutzer hätte also sein eigenes
+    `contact_email_verified_at` einfach per PostgREST-PATCH direkt auf
+    einen beliebigen Wert setzen können — eine Verifizierung komplett
+    umgehend, bevor es überhaupt eine gab. (Aktuell sonst folgenlos:
+    keine andere Stelle im Code liest `profiles.status` oder
+    `contact_email_verified_at` für Autorisierungsentscheidungen,
+    geprüft per Volltextsuche — aber ab jetzt, wo
+    `contact_email_verified_at` tatsächlich etwas bedeutet, war das
+    Zufenster zu schließen.) Fix: `revoke update on public.profiles
+    from authenticated` + spaltengenaues `grant update (first_name,
+    last_name, contact_email) on public.profiles to authenticated` —
+    `status`, `school_id` und `contact_email_verified_at` sind von
+    dort an nie mehr client-seitig direkt setzbar.
+  - Trigger `trg_reset_contact_email_verification`: jede Änderung von
+    `contact_email` setzt `contact_email_verified_at` serverseitig
+    automatisch auf `null` zurück — unabhängig davon, welcher Pfad die
+    Spalte schreibt.
+  - Neue Tabelle `email_verification_requests` (gleiche Form wie
+    `password_reset_requests`: gehashtes Token, Ablaufzeit,
+    Einmalverbrauch über `consumed_at`), ohne jegliches RLS-Grant an
+    `anon`/`authenticated` — nur über die neue Edge Function
+    `email-verification-request` (authentifiziert, fordert einen Link
+    für die eigene, noch unverifizierte `contact_email` an) und die
+    neue `SECURITY DEFINER`-Funktion
+    `fn_confirm_contact_email_verification(p_token)` erreichbar (bewusst
+    ohne Sitzungspflicht aufrufbar, da der Link auf einem anderen Gerät
+    geöffnet werden könnte als dem, von dem die Anfrage kam — gleiches
+    Vertrauensmodell wie `password-recovery-redeem`).
+  - UI: `settings.tsx` hat jetzt einen echten Profil-Abschnitt
+    (Kontakt-E-Mail setzen/speichern, Verifizierungsstatus anzeigen,
+    Link anfordern) statt des bisherigen Platzhalters; neue
+    eigenständige Route `/verify-email` (öffnet den Link aus der
+    Mail), die bewusst **außerhalb** der Login/Dashboard-Weiterleitung
+    in `_layout.tsx`s `Guard` liegt (muss sowohl eingeloggt als auch
+    ausgeloggt funktionieren).
+  - Verifiziert: Wegwerf-Postgres (spaltengenaue Grant-Verweigerung,
+    Trigger-Reset, kompletter Token-Zyklus inkl. falschem Token,
+    Replay-Schutz, Ablauf — alle fünf Fälle bestanden),
+    `npm run typecheck`/`lint`/`test`/`web:build` fehlerfrei
+    (inkl. der neuen `/verify-email`-Route im Build-Output). Auf dem
+    echten Server angewendet (Backup vorher, `NOTIFY pgrst, 'reload
+    schema'` danach, in `supabase_migrations.schema_migrations`
+    vermerkt) — aber die Edge Function selbst liegt noch nicht auf dem
+    Server (gleiche SSH-Beschränkung wie beim `admin-invite-user`-
+    Deployment in einer früheren Phase dieser Sitzung: diese Sitzung
+    hat keinen Datei-Upload-Zugriff, nur Port-Forwarding). **Damit ist
+    der komplette E-Mail-Verifizierungs-Fluss noch nicht live
+    durchgespielt** — nur bis zur Datenbank-Ebene.
+  - **Playwright als dauerhafte E2E-Suite eingerichtet**
+    (`playwright.config.ts`, `e2e/`), ersetzt die bisherigen Ad-hoc-
+    Puppeteer-Skripte für die sicher wiederholbaren Pfade:
+    `e2e/academic-entities.spec.ts` deckt Schuljahr → Fach → Klasse →
+    Kurs (inkl. Chip-Picker-Interaktion) sowie die
+    Berechtigungs-Ablehnung ab, mit optionalem Aufräumen über
+    `SUPABASE_DB_URL` (direkte `pg`-Verbindung) nach dem Lauf.
+    Bewusst **nicht** in die automatisierte Suite übernommen:
+    Mitglied einladen, CSV-Import, Passwort-Wiederherstellung per Code
+    — alle drei legen echte `auth.users`-Zeilen an (keine Lösch-UI) oder
+    verändern das Passwort eines geteilten Seed-Kontos
+    (`student.a1`), was bei wiederholten/unbeaufsichtigten Läufen gegen
+    den geteilten Demo-Server riskant wäre, solange es kein
+    dediziertes E2E-Testkonto gibt. Chromium-Browser-Binary für
+    Playwright lokal installiert und lauffähig bestätigt.
 
 ## Sicherheit
 

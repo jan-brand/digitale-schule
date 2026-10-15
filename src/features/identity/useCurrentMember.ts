@@ -48,6 +48,8 @@ export function useCurrentMember() {
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [refreshIndex, setRefreshIndex] = useState(0);
+
   useEffect(() => {
     if (!session) {
       setMember(null);
@@ -96,7 +98,7 @@ export function useCurrentMember() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, refreshIndex]);
 
-  return { member, loading };
+  return { member, loading, refetch: () => setRefreshIndex((n) => n + 1) };
 }
