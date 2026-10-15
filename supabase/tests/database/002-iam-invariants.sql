@@ -17,6 +17,15 @@ begin
 end;
 $$ language plpgsql;
 
+-- Principal A (seed.sql) is a second admin-level account in Schule A,
+-- added while auditing doc/ACCEPTANCE.md Gate 2 ("Schulleitung" test
+-- actor). Tests 4/5 below specifically need Admin A to be the *only*
+-- active admin to exercise the last-admin protection, so revoke
+-- Principal A's role for the rest of this transaction only (rolled
+-- back at the end of this file, seed data elsewhere unaffected).
+update public.role_assignments set revoked_at = now()
+where membership_id = 'b0000000-0000-0000-0000-00000000f111' and revoked_at is null;
+
 -- 1) IAM-005/IAM-T09: no self-escalation — Admin A cannot assign a role
 -- (even a lesser one) to their own membership via fn_assign_role.
 select pg_temp.act_as('10000000-0000-0000-0000-00000000000a');

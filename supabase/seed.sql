@@ -43,15 +43,16 @@ insert into auth.users (
   ('00000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-0000000000a2', 'authenticated', 'authenticated', 'u-seed-student-a2@accounts.campus.internal', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"school_id":"a0000000-0000-0000-0000-000000000001","first_name":"Schüler","last_name":"A2"}', now(), now(), '', ''),
   ('00000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-0000000000b1', 'authenticated', 'authenticated', 'u-seed-student-b1@accounts.campus.internal', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"school_id":"a0000000-0000-0000-0000-000000000002","first_name":"Schüler","last_name":"B1"}', now(), now(), '', ''),
   ('00000000-0000-0000-0000-000000000000', '40000000-0000-0000-0000-00000000000d', 'authenticated', 'authenticated', 'u-seed-parent-a1@accounts.campus.internal', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"school_id":"a0000000-0000-0000-0000-000000000001","first_name":"Elternteil","last_name":"A1"}', now(), now(), '', ''),
-  ('00000000-0000-0000-0000-000000000000', '50000000-0000-0000-0000-00000000000e', 'authenticated', 'authenticated', 'u-seed-secretariat-a@accounts.campus.internal', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"school_id":"a0000000-0000-0000-0000-000000000001","first_name":"Sekretariat","last_name":"A"}', now(), now(), '', '');
--- NOTE: a seeded `principal` account was tried here and reverted — it
--- broke 002/003's existing "last active admin" tests, which assume
--- Admin A is the school's only admin-level account (adding a principal
--- means Admin A is no longer "last", so those scenarios need their own
--- dedicated fixture or an update to suspend/revoke the principal too
--- first). Left as a follow-up rather than rushing a fix to those tests
--- under time pressure — doc/ACCEPTANCE.md Gate 2's "Schulleitung" actor
--- is still open pending this.
+  ('00000000-0000-0000-0000-000000000000', '50000000-0000-0000-0000-00000000000e', 'authenticated', 'authenticated', 'u-seed-secretariat-a@accounts.campus.internal', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"school_id":"a0000000-0000-0000-0000-000000000001","first_name":"Sekretariat","last_name":"A"}', now(), now(), '', ''),
+  ('00000000-0000-0000-0000-000000000000', '60000000-0000-0000-0000-00000000000f', 'authenticated', 'authenticated', 'u-seed-principal-a@accounts.campus.internal', crypt('campus-dev-only', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"school_id":"a0000000-0000-0000-0000-000000000001","first_name":"Schulleitung","last_name":"A"}', now(), now(), '', '');
+-- A seeded `principal` adds a SECOND admin-level account to Schule A,
+-- which breaks 002-iam-invariants.sql/003-security-hotfix.sql's
+-- "Admin A is the only active admin" assumption (used to test the
+-- last-active-admin protection). Fixed there, not avoided here: both
+-- files now temporarily revoke Principal A's role at the top of their
+-- own begin/rollback transaction, restoring that assumption for just
+-- their own duration — this seed data (and every other test file)
+-- stays unaffected.
 
 -- public.profiles rows are created automatically by the on_auth_user_created
 -- trigger (fn_handle_new_user, 20261014180001_final_data_model.sql).
@@ -66,7 +67,8 @@ insert into public.school_memberships (id, school_id, user_id, status, joined_at
   ('b0000000-0000-0000-0000-0000000a2222', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-0000000000a2', 'active', now()), -- Student A2
   ('b0000000-0000-0000-0000-0000000b1111', 'a0000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-0000000000b1', 'active', now()), -- Student B1
   ('b0000000-0000-0000-0000-00000000d111', 'a0000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-00000000000d', 'active', now()), -- Parent A1
-  ('b0000000-0000-0000-0000-00000000e111', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-00000000000e', 'active', now()); -- Secretariat A
+  ('b0000000-0000-0000-0000-00000000e111', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-00000000000e', 'active', now()), -- Secretariat A
+  ('b0000000-0000-0000-0000-00000000f111', 'a0000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-00000000000f', 'active', now()); -- Schulleitung A
 
 -- --- role_assignments --------------------------------------------------
 -- (direct inserts here bypass fn_assign_role — fine for seed data, which
@@ -84,7 +86,8 @@ from (values
   ('a0000000-0000-0000-0000-000000000001'::uuid, 'b0000000-0000-0000-0000-0000000a2222'::uuid, 'student'::public.role_code),
   ('a0000000-0000-0000-0000-000000000002'::uuid, 'b0000000-0000-0000-0000-0000000b1111'::uuid, 'student'::public.role_code),
   ('a0000000-0000-0000-0000-000000000001'::uuid, 'b0000000-0000-0000-0000-00000000d111'::uuid, 'parent'::public.role_code),
-  ('a0000000-0000-0000-0000-000000000001'::uuid, 'b0000000-0000-0000-0000-00000000e111'::uuid, 'secretariat'::public.role_code)
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'b0000000-0000-0000-0000-00000000e111'::uuid, 'secretariat'::public.role_code),
+  ('a0000000-0000-0000-0000-000000000001'::uuid, 'b0000000-0000-0000-0000-00000000f111'::uuid, 'principal'::public.role_code)
 ) as v(school_id, membership_id, role_code)
 join public.roles r on r.code = v.role_code;
 
@@ -123,7 +126,8 @@ insert into internal.login_identifiers (profile_id, school_id, username_normaliz
   ('30000000-0000-0000-0000-0000000000a2', 'a0000000-0000-0000-0000-000000000001', 'student.a2', 'u-seed-student-a2@accounts.campus.internal'),
   ('30000000-0000-0000-0000-0000000000b1', 'a0000000-0000-0000-0000-000000000002', 'student.b1', 'u-seed-student-b1@accounts.campus.internal'),
   ('40000000-0000-0000-0000-00000000000d', 'a0000000-0000-0000-0000-000000000001', 'parent.a1', 'u-seed-parent-a1@accounts.campus.internal'),
-  ('50000000-0000-0000-0000-00000000000e', 'a0000000-0000-0000-0000-000000000001', 'secretariat.a', 'u-seed-secretariat-a@accounts.campus.internal');
+  ('50000000-0000-0000-0000-00000000000e', 'a0000000-0000-0000-0000-000000000001', 'secretariat.a', 'u-seed-secretariat-a@accounts.campus.internal'),
+  ('60000000-0000-0000-0000-00000000000f', 'a0000000-0000-0000-0000-000000000001', 'principal.a', 'u-seed-principal-a@accounts.campus.internal');
 
 -- --- class_staff_assignments -------------------------------------------
 -- Teacher A as Klassenleitung ("class_leadership") of 10a — needed to

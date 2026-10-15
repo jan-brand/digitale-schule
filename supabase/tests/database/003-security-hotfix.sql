@@ -86,6 +86,12 @@ delete from public.role_assignments ra
 using public.roles r
 where ra.role_id = r.id and ra.membership_id = 'b0000000-0000-0000-0000-0000000a2222' and r.code = 'principal';
 
+-- Same reasoning applies to Principal A (seed.sql, added while auditing
+-- doc/ACCEPTANCE.md Gate 2's "Schulleitung" test actor) — revoke for
+-- the rest of this transaction only.
+update public.role_assignments set revoked_at = now()
+where membership_id = 'b0000000-0000-0000-0000-00000000f111' and revoked_at is null;
+
 -- 6) The pre-existing last-admin invariant (IAM-022) still holds after
 -- the P0-02 rewrite of fn_revoke_role.
 select pg_temp.act_as('10000000-0000-0000-0000-00000000000a');
