@@ -777,6 +777,67 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     Nach Aufräumen der Testzeilen ging ein erneuter Versuch wieder
     normal durch (`400`, nicht dauerhaft blockiert) — die Sperre ist
     also wirklich zeitfensterbasiert, kein permanenter IP-Bann.
+- **CI-Reparatur + M16 (zwei Gate-2-Lücken): abgeschlossen.** Beim
+  formalen Durchgehen von `doc/ACCEPTANCE.md` Gate 3 ("CI Staging
+  erfolgreich") aufgefallen: `supabase test db` war in der
+  GitHub-Actions-CI seit M5 auf jedem einzelnen Lauf rot — unabhängig
+  von dieser Sitzung, nie aufgefallen, weil die eigene Verifikation
+  immer nur Wegwerf-Postgres + manuelles `psql` nutzte, nie den
+  tatsächlichen `supabase test db`/pgTAP-Pfad. Zwei unabhängige, alte
+  Bugs: (1) `004-final-data-model.sql` erwartete eine veraltete
+  Fehlermeldung (`permission denied` statt der seit M5 tatsächlichen
+  `new row violates row-level security policy`), (2) `psql`s
+  `:'variable'`-Ersetzung funktioniert nicht innerhalb von
+  `$$...$$`-Dollar-Quoting — `007-m5-csv-import.sql` reichte dadurch
+  ein unersetztes `:'job_id'` direkt an Postgres weiter, Syntaxfehler.
+  Beide behoben, lokal mit selbst aus dem Quellcode gebautem pgTAP
+  (kein Docker in dieser Umgebung) gegen eine Nachbildung der echten
+  Supabase-Standard-Grants verifiziert, dann per echtem CI-Lauf
+  bestätigt: **zum ersten Mal überhaupt grün** (`c18ad7e`). Dabei auch
+  einen latenten Jest-Bug aus der Playwright-Einrichtung gefunden:
+  `jest.config.js` schloss `e2e/` nicht aus, `npm test` war seitdem
+  kaputt (bereits in M15 mitbehoben).
+
+  Zusätzlich bei derselben Prüfung zwei echte Gate-2-Lücken gefunden
+  und behoben (`20261015130001_m16_gate2_gaps.sql`): Klassenleitung
+  hatte keinen Lesezugriff auf die eigene Klasse (Verstoß gegen D-016),
+  und die `secretariat`-Rolle hatte seit M3 nie einen Testaccount
+  (`seed.sql` ergänzt). Beides live auf dem echten Server verifiziert:
+  Lehrkraft A (Klassenleitung einer echten Klasse) sieht per
+  RLS-Kontext genau die eigene Klasse (1 Zeile), Admin B (andere
+  Schule) sieht 0; pgTAP bestätigt für Sekretariat 0 Zugriff ohne
+  Berechtigung, Zugriff nach explizitem `classes.manage`-Grant.
+  **Zusätzlich live bewiesen statt nur aus dem Code gelesen**: der
+  Schutz "letzter aktiver Schuladmin bleibt erhalten" hält auch unter
+  echter Nebenläufigkeit — zwei überlappende `fn_revoke_role`-Aufrufe
+  gegen zwei Admins derselben Schule zeigten per Zeitstempel, dass die
+  zweite Transaktion exakt bis zum Commit der ersten blockierte
+  (Sperre auf der `schools`-Zeile), und wurde danach korrekt abgelehnt.
+
+  Ein geseedeter Schulleitungs-Account (`principal`, ebenfalls von
+  Gate 2 als Testakteur gefordert) wurde versucht, aber zurückgenommen:
+  er brach zwei bestehende "letzter Admin"-Tests, die Admin A als
+  einzigen Admin voraussetzen — als offener Folgepunkt in `seed.sql`
+  und `doc/ACCEPTANCE.md` vermerkt statt überstürzt gefixt.
+- **Backup/Restore-Konzept dokumentiert + erster echter Restore-Test:
+  abgeschlossen.** Neues `doc/BACKUP_RESTORE.md` — ehrlich benannt, was
+  diese Phase leistet (manuelles `pg_dump` vor jeder Migration,
+  lokal/ephemer) und was explizit Gate-4-Scope bleibt (automatisiertes
+  wiederkehrendes Backup, Offsite-Lagerung, Monitoring,
+  Backup-Verschlüsselung). **Erster tatsächlich durchgeführter
+  Restore-Test dieses Projekts**: frisches `pg_dump` vom echten Server,
+  Zeilenzahlen vorher notiert (`schools=3`, `school_memberships=7`,
+  `profiles=7`, `role_assignments=7`, `audit_events=12`, `classes=2`,
+  `courses=3`), in eine komplett neue, leere lokale Postgres-Instanz
+  restauriert (nach Anlegen der drei Supabase-Plattformrollen, die
+  nicht Teil des Dumps sind) — **alle Zeilenzahlen stimmten exakt**,
+  alle 19 verzeichneten Migrationen vorhanden. Einzige Restore-Fehler
+  betrafen `pg_cron`/`supabase_vault`-Objekte (Supabase-Plattform-
+  Standard, von dieser App nicht genutzt), keine Anwendungsdaten.
+- **`doc/ACCEPTANCE.md` Gate 2/3 formal durchgegangen und mit Belegen
+  aktualisiert**, statt nur in diesem README verbal zu berichten —
+  jeder Punkt jetzt mit konkretem Beleg (Testdatei, Live-Check oder
+  offen mit Begründung) abgehakt oder als `[~]` (teilweise) markiert.
 
 ## Sicherheit
 

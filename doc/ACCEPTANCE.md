@@ -32,21 +32,26 @@ Supabase Auth.
 - [x] **Bei PoC-Fehlschlag: Architektur-Stopp, keine Annahme/freie Auth-Nachentwicklung.** — entfällt, PoC bestanden; keine Ersatz-Auth entwickelt.
 
 ## Gate 2: Mandantentrennung und IAM
-- [ ] Fiktive Schulen A/B und Schüler/Lehrkraft/Schulleitung/Admin/Secretariat.
-- [ ] A kann B nie lesen, ändern oder über FK referenzieren.
-- [ ] Manipulierte school_id, geschützte Tabelle, service-key Fehlgebrauch, Storage, Views, Functions getestet.
-- [ ] Normale UI/API kann Schulleitungsrolle nicht vergeben; CLI nur Operator.
-- [ ] Schuladmin-Ernennung nur mit Berechtigung, keine Selbstaufwertung, critical reason+audit atomar.
-- [ ] Letzter aktiver Schuladmin bleibt auch bei konkurrierenden Operationen erhalten.
-- [ ] Klassenleitung nur auf eigene zugewiesene Klassen; Sekretariat braucht explizites Recht.
+
+Formal gegen die echte Instanz geprüft 2026-10-15 (Details, Befunde und
+Fixes dieser Prüfung: M15/M16 in `README.md`).
+
+- [~] Fiktive Schulen A/B und Schüler/Lehrkraft/Schulleitung/Admin/Secretariat. — Schüler/Lehrkraft/Admin (beide Schulen)/Secretariat/Eltern jetzt in `supabase/seed.sql` vorhanden (Secretariat ergänzt bei dieser Prüfung, fehlte seit M3 komplett). **Schulleitung (principal) fehlt weiterhin** — ein erster Versuch brach zwei bestehende "letzter Admin"-Tests (002/003), die Admin A als einzigen Admin voraussetzen; braucht eine eigene Test-Fixture, noch nicht gebaut.
+- [x] A kann B nie lesen, ändern oder über FK referenzieren. — wiederholt verifiziert über die gesamte Projekthistorie (`supabase/tests/database/001-rls-isolation.sql`, M10/M13 Live-Checks, M9-Dashboard); bei dieser Prüfung erneut per pgTAP-Lauf bestätigt (alle 8 Testdateien grün).
+- [x] Manipulierte school_id, geschützte Tabelle, service-key Fehlgebrauch, Storage, Views, Functions getestet. — Service-Key: `grep` über `src/` bestätigt keine Referenz auf `service_role`/`SERVICE_ROLE` im Client-Code, `.env.local` enthält nur URL+Anon-Key. Storage: nicht genutzt (keine Storage-Aufrufe im Client). Views: keine Views in der Datenbank (`grep create view` über alle Migrationen: leer). Functions: alle mutierenden RPCs lösen `school_id` serverseitig aus dem Ziel-Objekt auf (z. B. `fn_assign_role` aus `p_target_membership_id`), nehmen sie nie direkt und ungeprüft vom Client entgegen — stichprobenhaft verifiziert.
+- [x] Normale UI/API kann Schulleitungsrolle nicht vergeben; CLI nur Operator. — `fn_assign_role` wirft `principal_role_is_cli_only`, wenn `p_role_code = 'principal'` (Code-Review, `20261013220006_rls_policies.sql`).
+- [x] Schuladmin-Ernennung nur mit Berechtigung, keine Selbstaufwertung, critical reason+audit atomar. — `fn_assign_role`: `self_role_assignment_forbidden` bei Selbstzuweisung, `school_admin`-Zuweisung erfordert `principal` oder `school_admin` mit `roles.assign.school_admin`, `reason_required`, Audit-Schreibvorgang im selben Funktionsaufruf (also atomar) wie das Insert.
+- [x] Letzter aktiver Schuladmin bleibt auch bei konkurrierenden Operationen erhalten. — **echt live getestet, nicht nur Code-Review**: zwei überlappende `fn_revoke_role`-Aufrufe gegen zwei Admins derselben Schule, eine Transaktion hielt die Sperre 3 Sekunden offen; die zweite blockierte nachweislich bis zum Commit der ersten (Zeitstempel identisch) und wurde danach korrekt mit `last_active_admin_required` abgelehnt. Mechanismus: `fn_assert_active_admin_remains` sperrt die `schools`-Zeile per `for update`.
+- [x] Klassenleitung nur auf eigene zugewiesene Klassen; Sekretariat braucht explizites Recht. — **Lücke gefunden und behoben** (M16, `20261015130001_m16_gate2_gaps.sql`): Klassenleitung hatte vorher gar keinen Lesezugriff auf die eigene Klasse. Neue Policy live auf dem echten Server verifiziert: Lehrkraft A (Klassenleitung 10a) sieht genau 1 Roster-Zeile, Admin B (andere Schule) sieht 0. Sekretariat: pgTAP-Test (`008-m16-gate2-gaps.sql`) bestätigt 0 Zugriff ohne Berechtigung, Zugriff nach explizitem `classes.manage`-Grant.
 
 ## Gate 3: Funktionale Foundation
-- [ ] Einladung/CSV-Prüfung/Import ohne unzulässige Rechte und ohne Passwörter im CSV.
-- [ ] Username automatisch aus Namen, Duplikate behandelt; Änderung nur Administration.
-- [ ] Lehrkraft-Reset für Schüler derselben Schule (nicht für andere Rollen); Rate-Limit/Audit.
-- [ ] Profile, Schuljahre, Klassen, Fächer, Kurse, Module und Admin-Basis nutzbar.
-- [ ] Dashboard zeigt echte Daten und ehrliche Leerzustände; responsive und Screenreader-/Tastaturprüfung.
-- [ ] Migration aus leerer DB reproduzierbar, CI Staging erfolgreich; Backup/Restore-Konzept dokumentiert.
+
+- [x] Einladung/CSV-Prüfung/Import ohne unzulässige Rechte und ohne Passwörter im CSV. — live über die echte UI getestet (`admin-invite-user`, `admin-import-csv-process`): echte Kontoerstellung, Vorschau erkennt Fehlerzeilen korrekt, kein Passwort in der CSV-Eingabe (nur `first_name,last_name,role_code,class_name`).
+- [x] Username automatisch aus Namen, Duplikate behandelt; Änderung nur Administration. — `src/features/auth/username.test.ts` (Unit-Tests bestehen), `fn_set_username` ist admin-only (M4).
+- [x] Lehrkraft-Reset für Schüler derselben Schule (nicht für andere Rollen); Rate-Limit/Audit. — `reset_forbidden_for_role` für Nicht-Schüler (pgTAP `006-m5-password-reset.sql`); Rate-Limit seit M15 live verifiziert (11 Versuche → zehnmal 400, dann 429, danach nach Ablauf des Zeitfensters wieder normal); Audit seit M5 (`fn_write_audit_event`).
+- [x] Profile, Schuljahre, Klassen, Fächer, Kurse, Module und Admin-Basis nutzbar. — wiederholt live durchgeklickt (M9–M13, Formular-Verifikationsrunde), zuletzt alle Admin-Screens ohne Konsolenfehler.
+- [~] Dashboard zeigt echte Daten und ehrliche Leerzustände; responsive und Screenreader-/Tastaturprüfung. — echte Daten/Leerzustände live bestätigt (M9, M13). **Screenreader- und Tastaturprüfung wurde in dieser gesamten Sitzung kein einziges Mal durchgeführt** — offen.
+- [x] Migration aus leerer DB reproduzierbar, CI Staging erfolgreich; Backup/Restore-Konzept dokumentiert. — CI (`supabase test db`) war seit M5 durchgängig rot (zwei alte pgTAP-Bugs, unabhängig von dieser Sitzungsarbeit), jetzt behoben und grün (`c18ad7e`). Backup/Restore-Konzept: `doc/BACKUP_RESTORE.md`, inkl. echtem, durchgeführtem Restore-Test (alle Zeilenzahlen nach Restore identisch zum Original).
 
 ## Gate 4: Produktivfreigabe separat
 - [ ] EU-/Hosting-/AVV-/Unterauftragnehmerprüfung, schulrechtliche Anforderungen, DSFA-Vorprüfung.
