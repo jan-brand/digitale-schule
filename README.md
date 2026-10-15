@@ -525,6 +525,43 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     `permission_grants`) zusätzlich live gegen den echten Server über
     den Tunnel abgeglichen — passt exakt zu den neuen Queries. **Nicht
     visuell im Browser geprüft.**
+- **M12 (Fächer/Kurse, Module, Audit — SCR-14/15/16/17): abgeschlossen**
+  — die letzten vier offenen Screens aus der UI-Spezifikation:
+  - `admin/subjects.tsx` (SCR-14): Liste + Anlegen, gleiches Muster wie
+    `admin/school-years.tsx`.
+  - `admin/courses.tsx` (SCR-15): Kurs anlegen (Fach- + Schuljahr-Chip-
+    Picker), Kursmitglieder verwalten (`course_memberships` — dieselbe
+    Tabelle, aus der M9s Dashboard-Widget „Meine Zuordnungen" schon
+    liest). Entfernen ist hier ein echtes `DELETE`, nicht ein
+    Soft-Revoke wie bei `class_memberships` — die Tabelle hat keine
+    `ended_at`-Spalte, also auch keine Historie zu bewahren.
+  - `admin/permissions.tsx`/`academicApi.ts` um
+    `listSubjects`/`createSubject`/`listCourses`/`createCourse`/
+    `listCourseMembers`/`addCourseMember`/`removeCourseMember`
+    erweitert; die drei Vorkommen der School-ID-Auflösung (Schuljahr,
+    Klasse, jetzt Fach/Kurs) dabei zu einer gemeinsamen
+    `resolveOwnSchoolId()`-Hilfsfunktion zusammengezogen statt dreifach
+    kopiert.
+  - `admin/audit.tsx` (SCR-17): datensparsame Liste (Aktion, Zielart,
+    Ergebnis, Begründung, Zeitpunkt) mit Textfilter; reiner Lesezugriff
+    — `audit_events` hat ohnehin keinen Client-Schreibzugriff, nur
+    `fn_write_audit_event` darf schreiben, und das ausschließlich aus
+    den SECURITY-DEFINER-Funktionen heraus.
+  - `admin/modules.tsx` (SCR-16): **bewusst kein Umschalt-UI** für
+    `module_settings`. Foundation v0.1 hat kein einziges optionales
+    Fachmodul, das auf diese Tabelle reagiert — ein Toggle ohne jede
+    reale Wirkung wäre genau die „Scheinfunktion", die §6.7 der
+    Spezifikation ausdrücklich verbietet. Stattdessen eine reine,
+    read-only Übersicht der tatsächlich aktiven Foundation-Module.
+  - Verifiziert: `typecheck`/`lint`/`test`/`web:build` bestehen (6 neue
+    Routen exportiert: `/admin/subjects`, `/admin/courses`,
+    `/admin/modules`, `/admin/audit` plus deren `(app)`-Varianten).
+    Tabellenschema (`subjects`, `courses`, `course_memberships`,
+    `audit_events`) zusätzlich live gegen den echten Server
+    abgeglichen — passt exakt; `audit_events` ist dort aktuell leer
+    (noch keine echten Admin-Aktionen live ausgeführt), der
+    Empty-State-Pfad des Audit-Screens greift also korrekt. **Nicht
+    visuell im Browser geprüft.**
 
 ## Sicherheit
 

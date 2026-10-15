@@ -20,7 +20,11 @@ export const ADMIN_ITEMS: NavItem[] = [
   { key: "admin-import", label: "CSV-Import", href: "/(app)/admin/import" },
   { key: "admin-school-years", label: "Schuljahre", href: "/(app)/admin/school-years" },
   { key: "admin-classes", label: "Klassen", href: "/(app)/admin/classes" },
+  { key: "admin-subjects", label: "Fächer", href: "/(app)/admin/subjects" },
+  { key: "admin-courses", label: "Kurse", href: "/(app)/admin/courses" },
   { key: "admin-permissions", label: "Berechtigungen", href: "/(app)/admin/permissions" },
+  { key: "admin-modules", label: "Module", href: "/(app)/admin/modules" },
+  { key: "admin-audit", label: "Audit", href: "/(app)/admin/audit" },
 ];
 
 export function buildNavItems(hasAdminAccess: boolean): NavItem[] {

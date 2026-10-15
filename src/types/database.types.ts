@@ -17,9 +17,10 @@
 // `Tables` entries are added only for tables the app directly
 // `.insert()`/`.update()`s rather than going through `.rpc()`/
 // `.returns<T>()` reads — academic structure is RLS-protected direct
-// writes by design (see that same migration's comment), so M10's
-// school_years/classes/class_staff_assignments/class_memberships
-// inserts need real column types here, hand-matched to
+// writes by design (see that same migration's comment), so M10/M12's
+// school_years/classes/class_staff_assignments/class_memberships/
+// subjects/courses/course_memberships inserts need real column types
+// here, hand-matched to
 // supabase/migrations/20261013220004_academic_structure.sql and
 // 20261014250001_m10_class_rosters.sql.
 
@@ -68,6 +69,46 @@ export type Database = {
           ended_at?: string | null;
         };
         Update: Partial<{ ended_at: string | null }>;
+      };
+      subjects: {
+        Row: { id: string; school_id: string; name: string; code: string; created_at: string };
+        Insert: { id?: string; school_id: string; name: string; code: string; created_at?: string };
+        Update: Partial<{ name: string; code: string }>;
+      };
+      courses: {
+        Row: { id: string; school_id: string; school_year_id: string; subject_id: string; name: string; created_at: string };
+        Insert: {
+          id?: string;
+          school_id: string;
+          school_year_id: string;
+          subject_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: Partial<{ name: string; subject_id: string; school_year_id: string }>;
+      };
+      course_memberships: {
+        Row: {
+          id: string;
+          school_id: string;
+          course_id: string;
+          user_id: string;
+          membership_id: string;
+          membership_school_id: string;
+          participant_role: "student" | "teacher";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          course_id: string;
+          user_id: string;
+          membership_id: string;
+          membership_school_id: string;
+          participant_role: "student" | "teacher";
+          created_at?: string;
+        };
+        Update: Partial<{ participant_role: "student" | "teacher" }>;
       };
     };
     Views: Record<string, never>;
