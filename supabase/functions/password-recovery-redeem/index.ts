@@ -1,4 +1,4 @@
-// POST { token, newPassword } -> 200 {} | 400 { error: "invalid_or_expired_code" }
+// POST { token, newPassword } -> 200 {} | 400 { error: "invalid_or_expired_code" } | 429 { error: "rate_limited" }
 //
 // Shared redemption for BOTH recovery paths (teacher_code and
 // verified_email use the same table/hash scheme — see
@@ -8,15 +8,38 @@
 // statement that checks it's still claimable), so two concurrent
 // redemption attempts with the same token can't both succeed — "einmalig
 // verwendbar" (doc/SECURITY_AUTH.md).
+//
+// Rate limit (20261015120001_m15_recovery_rate_limit.sql): teacher_code
+// is an 8-digit numeric code, brute-forceable without a per-IP attempt
+// cap within its 30-minute validity window — verified_email's 32-byte
+// hex token doesn't need this, but both paths share this endpoint.
 import { sql } from "../_shared/db.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+const MAX_ATTEMPTS_PER_WINDOW = 10;
+const WINDOW_MINUTES = 15;
+
 const GENERIC_ERROR = new Response(JSON.stringify({ error: "invalid_or_expired_code" }), {
   status: 400,
   headers: { "Content-Type": "application/json" },
 });
+const RATE_LIMITED = new Response(JSON.stringify({ error: "rate_limited" }), {
+  status: 429,
+  headers: { "Content-Type": "application/json" },
+});
+
+function callerIp(req: Request): string {
+  // Apache sets this on every request it proxies through (see
+  // supabase.jan-brand.space-le-ssl.conf) — the first entry is the
+  // original client, later entries would be further intermediate
+  // proxies we don't have here. Falls back to a shared bucket if
+  // missing/malformed rather than failing open with no limit at all.
+  const forwarded = req.headers.get("x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  return first && first.length > 0 ? first : "unknown";
+}
 
 interface RedeemRequest {
   token?: unknown;
@@ -48,6 +71,20 @@ Deno.serve(async (req: Request) => {
   if (!token || newPassword.length < 8) {
     return GENERIC_ERROR;
   }
+
+  const ip = callerIp(req);
+  // Opportunistic trim instead of a cron job — cheap, and this table
+  // only ever needs rows from the last WINDOW_MINUTES anyway.
+  await sql`delete from public.recovery_redeem_attempts where attempted_at < now() - interval '1 hour'`;
+  const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
+  const recentAttempts = await sql<{ count: string }[]>`
+    select count(*) from public.recovery_redeem_attempts
+    where ip_address = ${ip} and attempted_at > ${windowStart}
+  `;
+  if (Number(recentAttempts[0].count) >= MAX_ATTEMPTS_PER_WINDOW) {
+    return RATE_LIMITED;
+  }
+  await sql`insert into public.recovery_redeem_attempts (ip_address) values (${ip})`;
 
   const tokenHash = await sha256Hex(token);
 

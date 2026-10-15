@@ -19,6 +19,9 @@ export async function redeemRecoveryCode(token: string, newPassword: string): Pr
     "password-recovery-redeem",
     { body: { token, newPassword } },
   );
+  if (data?.error === "rate_limited") {
+    throw new CampusError("validation_failed", "Zu viele Versuche. Bitte in einigen Minuten erneut versuchen.");
+  }
   if (error || data?.error) {
     throw new CampusError("validation_failed", "Code ungültig, abgelaufen oder bereits verwendet.");
   }

@@ -737,6 +737,47 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
     dediziertes E2E-Testkonto gibt. Chromium-Browser-Binary für
     Playwright lokal installiert und lauffähig bestätigt.
 
+- **M15 (Rate-Limiting für Passwort-Wiederherstellung): abgeschlossen,
+  live verifiziert.** Lücke beim Durchgehen von `doc/ACCEPTANCE.md`
+  Gate 3 gefunden: „Lehrkraft-Reset ...; Rate-Limit/Audit" — Audit gab
+  es seit M5, ein Rate-Limit nie. Konkret riskant beim Lehrkraft-Code
+  (`fn_issue_teacher_reset_code`): ein 8-stelliger numerischer Code
+  (10^8 Möglichkeiten), 30 Minuten gültig, und
+  `password-recovery-redeem` prüfte beliebig viele Versuche ohne jede
+  Drosselung — ein Skript hätte einen gültigen Code innerhalb des
+  Gültigkeitsfensters brute-forcen können. Der `verified_email`-Pfad
+  (32-Byte-Zufalls-Hex-Token) ist davon praktisch nicht betroffen, teilt
+  sich aber denselben Redeem-Endpunkt.
+  - Neue Tabelle `recovery_redeem_attempts`
+    (`20261015120001_m15_recovery_rate_limit.sql`), ohne RLS-Grants
+    (gleiche Haltung wie `password_reset_requests`/
+    `email_verification_requests`) — nur von der Edge Function selbst
+    beschrieben.
+  - `password-recovery-redeem` zählt Versuche pro Client-IP (aus dem
+    von Apache gesetzten `X-Forwarded-For`) in einem 15-Minuten-Fenster;
+    ab 10 Versuchen `429 { error: "rate_limited" }` statt der
+    eigentlichen Prüfung. Opportunistisches Aufräumen (Zeilen älter als
+    1 Stunde) bei jedem Aufruf statt eines Cron-Jobs.
+  - Dabei einen latenten Bug aus der Playwright-Einrichtung gefunden
+    und mitbehoben: `jest.config.js` hatte `e2e/*.spec.ts` nicht
+    ausgeschlossen, Jest versuchte die Playwright-Specs selbst
+    auszuführen und schlug fehl (`npm test` war seitdem kaputt, ohne
+    dass es aufgefallen war, weil nach der Playwright-Einrichtung kein
+    erneuter `npm test`-Lauf gemacht wurde).
+  - Verifiziert: Wegwerf-Postgres (Zähllogik, Fenster, Aufräumen),
+    `npm run typecheck`/`lint`/`test`/`web:build` fehlerfrei. Auf dem
+    echten Server angewendet und die Edge Function neu deployt
+    (wieder per SFTP-Upload + Stack-Neustart durch den Nutzer — gleiche
+    Einschränkung wie bei M14). **Live am echten Endpunkt bestätigt**:
+    11 schnelle Anfragen mit ungültigem Code gegen
+    `https://supabase.jan-brand.space/functions/v1/password-recovery-redeem`
+    ergaben zehnmal `400` und beim elften Versuch `429
+    {"error":"rate_limited"}`; in der DB korrekt einer echten Client-IP
+    zugeordnet (Apache leitet `X-Forwarded-For` durchgängig weiter).
+    Nach Aufräumen der Testzeilen ging ein erneuter Versuch wieder
+    normal durch (`400`, nicht dauerhaft blockiert) — die Sperre ist
+    also wirklich zeitfensterbasiert, kein permanenter IP-Bann.
+
 ## Sicherheit
 
 Niemals Service-Role-Keys oder andere privilegierte Geheimnisse im Frontend
