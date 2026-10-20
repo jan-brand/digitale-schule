@@ -1,5 +1,10 @@
 # Campus – UI/UX-Entscheidungsrunde 11: Dashboard und Rollenansichten
 
+## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 12 (20.10.2026)
+
+**UX-DEC-27 bis UX-DEC-34 sind die neuesten und für ihre jeweiligen UI/UX-Themen vorrangigen Produktentscheidungen.** Sie ersetzen auch ältere als „verbindlich“ gekennzeichnete UI/UX-Einzelvorgaben, soweit ein inhaltlicher Widerspruch besteht (insbesondere die mobile Navigationsbelegung und der zusätzliche mobile Menüzugang). Nicht widersprechende UX-Beschlüsse bleiben bestehen. **Keine** Übersteuerung der Sicherheits-, Mandanten-, Authentifizierungs-, Datenschutz- oder Berechtigungsgrenzen D-001 bis D-024. Vollständige Entscheidungen, Konfliktregeln, Abnahmekriterien und offene Punkte: [UI_UX_DECISIONS_RUNDE_12.md](UI_UX_DECISIONS_RUNDE_12.md).
+
+
 **Stand:** 13.10.2026  
 **Status:** Die zwölf Entscheidungen UX-DEC-15 bis UX-DEC-26 sind vom Produkteigentümer verbindlich beschlossen.  
 **Geltung:** Campus Foundation v0.1, soweit nicht ausdrücklich als spätere Ausbaustufe bezeichnet.  
