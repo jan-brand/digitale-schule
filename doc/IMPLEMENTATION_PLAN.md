@@ -41,6 +41,7 @@ Baseline: expo, react, react-native, expo-router, react-native-web, react-dom, t
 | P0-10 | Dashboard mit echten Daten, Navigation und WCAG Checks | keine erfundenen Live-Daten |
 | P0-11 | CI/E2E/Staging/Runbook/Restore-Konzept | Acceptance Checklist dokumentiert |
 | P0-12 | Einstellungen (`src/app/(app)/settings.tsx`) auf Widget-Pattern wie Dashboard umstellen, Pflicht-Widgets Konto/Sicherheit bleiben nicht ausblendbar, Darstellung optional personalisierbar — Konzept: `doc/SETTINGS_WIDGETS_PLAN.md` | Keine neuen RLS-/Auth-Pfade; bestehende Gate-3-Prüfung (Profile nutzbar, WCAG) nach Umsetzung wiederholt |
+| P0-13 | Login (`src/app/(auth)/login.tsx`) Desktop-Layout: Eingabefelder/Buttons linksbündig mit Rand zur Fensterkante, Branding-Panel; Tablet/Mobile unverändert — `TODO/login_layout_update.md` | Keine Veränderung an `signIn`/Validierungslogik (`isValidLoginInput`); dokumentierte Abweichung: zweistufiger statt einstufiger Formularablauf |
 
 ## Vorgeschlagene PR-Grenzen
 PR-01 Doku/Expo/CI; PR-02 Supabase test infrastructure + Auth PoC (BLOCKER); PR-03 Schema/RLS/privileged functions; PR-04 CLI/Invite/CSV/Reset; PR-05 UI/Admin/Dashboard; PR-06 Security/Staging/Acceptance. Keine Arbeit an endgültiger Username-Login-Implementierung bevor PoC besteht.

@@ -51,7 +51,7 @@
 2. **Schule** (`/school`) – freigegebene Stamminformationen; Unterpunkte je Berechtigung.
 3. **Verwaltung** (`/admin`) – nur bei mindestens einer gültigen Verwaltungsberechtigung.
 4. **Profil & Einstellungen** (`/settings`) – alle angemeldeten Rollen.
-
+5. **Lade indikatoren** - Wenn Prozesse von der  Netzwerk-geschwindigkeit oder Bandbreite abhängig sind, sollte ein Ladesymbol oder ein sonsitger Indikator dafür festgelegt sein; dieser muss systemweit einheitlich sein.
 ### Admin-Unterpunkte nach Berechtigung
 - Mitglieder / Einladungen / CSV-Import.
 - Rollen und Zusatzrechte (geschützt; kritische Änderungen mit Pflichtbegründung).
