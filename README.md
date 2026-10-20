@@ -889,6 +889,34 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
   native (iOS/Android) Zugänglichkeit wurde gar nicht geprüft (keine
   Simulator-/Geräte-Umgebung in dieser Sitzung).
 
+- **M19 (Einladungs-Historie, SCR-09): abgeschlossen, mit offener
+  Live-Prüfung.** Der in `doc/CAMPUS_IAM_ACCOUNT_LIFECYCLE_v0_4.md`
+  §4.3/§5 und ursprünglich in `doc/UI_UX_SPECIFICATION.md` SCR-09
+  skizzierte asynchrone Einladungs-Token-Flow (E-Mail mit Link, Status
+  „pending" bis zum Klick) wurde nie gebaut — ohne SMTP-Versand
+  (`EMAIL_PROVIDER=log` ist der einzige aktive Pfad) und mit dem
+  tatsächlich umgesetzten Benutzername/Passwort-Modell hätte er keinen
+  funktionierenden Zustellweg. Die seit `20261013220005_settings_audit.sql`
+  komplett ungenutzte `invitations`-Tabelle (kein Edge-Function- oder
+  Client-Code las/schrieb sie je — per Repo-weitem Grep bestätigt) wird
+  stattdessen als Append-only-Historie der echten, synchronen
+  Kontoerstellung wiederverwendet: `admin-invite-user` schreibt jetzt
+  pro Einladung eine bereits `'accepted'`-Zeile; eine neue additive FK
+  (`invitations_accepted_by_user_id_fkey` auf `school_memberships.user_id`,
+  seit dem P0-03-Hotfix UNIQUE) macht die entstandene Mitgliedschaft im
+  neuen `admin/invitations`-Screen embedbar. „Widerrufen" entfällt
+  bewusst (eine bereits akzeptierte Einladung lässt sich nicht
+  un-akzeptieren) — Sperren/Reaktivieren der Mitgliedschaft übernimmt
+  stattdessen die bereits bestehende `fn_update_membership_status`,
+  dieselbe Aktion wie in `admin/users.tsx`.
+
+  `typecheck`/`lint`/Unit-Tests grün; Spalten, Enum-Wert (`'accepted'`)
+  und FK-Pfad des neuen Inserts manuell gegen die tatsächlichen
+  Migrationen gegengeprüft. **Nicht geprüft**: ein echter Durchlauf
+  gegen eine laufende Supabase-Instanz (kein Docker in dieser Sitzung,
+  gleiche Einschränkung wie bei POC-09) — siehe `doc/ACCEPTANCE.md`
+  Gate 3.
+
 ## Sicherheit
 
 Niemals Service-Role-Keys oder andere privilegierte Geheimnisse im Frontend

@@ -317,3 +317,54 @@ export async function confirmAndProcessCsvImport(jobId: string): Promise<Process
   }
   return data;
 }
+
+// SCR-09 / M19: history of invitations issued via admin-invite-user —
+// see 20261016000001_m19_invitation_lifecycle.sql for why this is a
+// resolved-at-write-time history list, not the async pending/token
+// flow doc/CAMPUS_IAM_ACCOUNT_LIFECYCLE_v0_4.md §4.3 originally
+// specified (never built, no working email delivery to build it
+// against). "status" here is effectively always 'accepted' by
+// construction; what actually changes afterwards is the resulting
+// membership's own status, which is why that's embedded here too and
+// surfaced as the primary state in the UI.
+export interface Invitation {
+  id: string;
+  createdAt: string;
+  invitedIdentityHint: string;
+  proposedRoleCodes: RoleCode[];
+  membershipId: string | null;
+  membershipStatus: string | null;
+  profileId: string | null;
+}
+
+interface InvitationRow {
+  id: string;
+  created_at: string;
+  invited_identity_hint: string;
+  proposed_role_codes: RoleCode[];
+  school_memberships: { id: string; status: string; profiles: { id: string } | null } | null;
+}
+
+export async function listInvitations(): Promise<Invitation[]> {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select(
+      "id, created_at, invited_identity_hint, proposed_role_codes, school_memberships!invitations_accepted_by_user_id_fkey(id, status, profiles(id))",
+    )
+    .order("created_at", { ascending: false })
+    .returns<InvitationRow[]>();
+
+  if (error) {
+    throw toCampusError(error, "Einladungen konnten nicht geladen werden.");
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    invitedIdentityHint: row.invited_identity_hint,
+    proposedRoleCodes: row.proposed_role_codes,
+    membershipId: row.school_memberships?.id ?? null,
+    membershipStatus: row.school_memberships?.status ?? null,
+    profileId: row.school_memberships?.profiles?.id ?? null,
+  }));
+}
