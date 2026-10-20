@@ -1,5 +1,10 @@
 # Campus – UI/UX-Spezifikation für Foundation v0.1
 
+## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 12 (20.10.2026)
+
+**UX-DEC-27 bis UX-DEC-34 sind die neuesten und für ihre jeweiligen UI/UX-Themen vorrangigen Produktentscheidungen.** Sie ersetzen auch ältere als „verbindlich“ gekennzeichnete UI/UX-Einzelvorgaben, soweit ein inhaltlicher Widerspruch besteht (insbesondere die mobile Navigationsbelegung und der zusätzliche mobile Menüzugang). Nicht widersprechende UX-Beschlüsse bleiben bestehen. **Keine** Übersteuerung der Sicherheits-, Mandanten-, Authentifizierungs-, Datenschutz- oder Berechtigungsgrenzen D-001 bis D-024. Vollständige Entscheidungen, Konfliktregeln, Abnahmekriterien und offene Punkte: [UI_UX_DECISIONS_RUNDE_12.md](UI_UX_DECISIONS_RUNDE_12.md).
+
+
 **Version:** 1.2 (UI/UX-Runden 9 bis 11; Beschlüsse verbindlich)  
 **Stand:** 13.10.2026  
 **Geltung:** Foundation v0.1, mit Erweiterungsregeln für spätere Schulmodule  
