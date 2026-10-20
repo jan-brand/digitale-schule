@@ -41,6 +41,12 @@ export async function signInWithUsername({ schoolSlug, username, password }: Sig
   }
 }
 
+// scope: "local" clears the device's session immediately without
+// waiting on a server round-trip. The default "global" scope instead
+// requires the server call to succeed (or fail with 404/401/403)
+// before it clears anything locally — any other failure (network
+// blip, backend downtime) leaves the user stuck signed in with the
+// Abmelden button appearing to do nothing.
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
 }
