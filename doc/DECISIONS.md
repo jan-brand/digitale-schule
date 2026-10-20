@@ -1,4 +1,9 @@
 # Campus – Verbindliches Entscheidungsregister
+
+## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 12 (20.10.2026)
+
+**UX-DEC-27 bis UX-DEC-34 sind die neuesten und für ihre jeweiligen UI/UX-Themen vorrangigen Produktentscheidungen.** Sie ersetzen auch ältere als „verbindlich“ gekennzeichnete UI/UX-Einzelvorgaben, soweit ein inhaltlicher Widerspruch besteht (insbesondere die mobile Navigationsbelegung und der zusätzliche mobile Menüzugang). Nicht widersprechende UX-Beschlüsse bleiben bestehen. **Keine** Übersteuerung der Sicherheits-, Mandanten-, Authentifizierungs-, Datenschutz- oder Berechtigungsgrenzen D-001 bis D-024. Vollständige Entscheidungen, Konfliktregeln, Abnahmekriterien und offene Punkte: [UI_UX_DECISIONS_RUNDE_12.md](UI_UX_DECISIONS_RUNDE_12.md).
+
 Version: 1.1 · 13.10.2026 · Status: beschlossene Produktregeln; technische PoC-Sperren gesondert.
 
 ## Geltung und Vorrang
