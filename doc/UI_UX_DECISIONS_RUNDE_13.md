@@ -1,5 +1,10 @@
 # Campus – UI/UX-Entscheidungsrunde 13: Navigationsausgestaltung
 
+## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 14 (21.10.2026)
+
+**UX-DEC-40 bis UX-DEC-44 sind für ihre Navigations- und Interaktionsdetails die jüngsten und vorrangigen UI/UX-Produktentscheidungen.** Bei inhaltlichen Widersprüchen gehen sie früheren UI/UX-Vorgaben aus Runden 9–13 vor; alle nicht widersprechenden Beschlüsse bleiben bestehen. Authentifizierung, schulgebundene Mandantentrennung, Berechtigungen/RLS, Datenschutz, Sicherheitsregeln und Freigabegates werden nicht überschrieben. Beschlüsse, 20 Abnahmekriterien und Umsetzungsgrenzen: [UI_UX_DECISIONS_RUNDE_14.md](UI_UX_DECISIONS_RUNDE_14.md).
+
+
 **Stand:** 21.10.2026  
 **Status:** Beschlossene Produktentscheidungen UX-DEC-35 bis UX-DEC-39; keine Implementierung oder technische Abnahme.  
 **Priorität:** Diese Runde ist für die hier geregelten UI/UX-Themen gegenüber widersprechenden Vorgaben der Runden 9 bis 12 und älteren UI/UX-Planungsannahmen vorrangig. Alle übrigen Entscheidungen bleiben bestehen. Unverändert zwingend sind Mandantentrennung, Authentifizierung, Autorisierung/RLS, Datenschutz, Sicherheits- und rechtliche Freigabegates sowie die Grenze zwischen Foundation v0.1 und späteren Fachmodulen. Siehe [Entscheidungsregister](DECISIONS.md) und [Runde 12](UI_UX_DECISIONS_RUNDE_12.md).
