@@ -1,5 +1,10 @@
 # Campus – Verbindliches Entscheidungsregister
 
+## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 13 (21.10.2026)
+
+**UX-DEC-35 bis UX-DEC-39 sind für die von ihnen geregelten Navigations- und UI-Präferenzthemen die jüngsten vorrangigen Produktentscheidungen.** Sie ersetzen bei inhaltlichem Konflikt ältere UI/UX-Vorgaben, einschließlich Runden 9–12 (beispielsweise feste mobile Bottom-Bar-Belegung). Andere UX-Beschlüsse gelten weiter. Unverändert zwingend bleiben Authentifizierung, Mandantentrennung, serverseitige Berechtigungen/RLS, Datenschutz, Sicherheitsregeln und Freigabegates. Die verbindlichen Beschlüsse, 20 Abnahmekriterien und Umsetzungsgrenzen stehen in [UI_UX_DECISIONS_RUNDE_13.md](UI_UX_DECISIONS_RUNDE_13.md).
+
+
 ## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 12 (20.10.2026)
 
 **UX-DEC-27 bis UX-DEC-34 sind die neuesten und für ihre jeweiligen UI/UX-Themen vorrangigen Produktentscheidungen.** Sie ersetzen auch ältere als „verbindlich“ gekennzeichnete UI/UX-Einzelvorgaben, soweit ein inhaltlicher Widerspruch besteht (insbesondere die mobile Navigationsbelegung und der zusätzliche mobile Menüzugang). Nicht widersprechende UX-Beschlüsse bleiben bestehen. **Keine** Übersteuerung der Sicherheits-, Mandanten-, Authentifizierungs-, Datenschutz- oder Berechtigungsgrenzen D-001 bis D-024. Vollständige Entscheidungen, Konfliktregeln, Abnahmekriterien und offene Punkte: [UI_UX_DECISIONS_RUNDE_12.md](UI_UX_DECISIONS_RUNDE_12.md).
