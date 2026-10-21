@@ -1,5 +1,10 @@
 # Campus – UI/UX-Spezifikation für Foundation v0.1
 
+## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 14 (21.10.2026)
+
+**UX-DEC-40 bis UX-DEC-44 sind für ihre Navigations- und Interaktionsdetails die jüngsten und vorrangigen UI/UX-Produktentscheidungen.** Bei inhaltlichen Widersprüchen gehen sie früheren UI/UX-Vorgaben aus Runden 9–13 vor; alle nicht widersprechenden Beschlüsse bleiben bestehen. Authentifizierung, schulgebundene Mandantentrennung, Berechtigungen/RLS, Datenschutz, Sicherheitsregeln und Freigabegates werden nicht überschrieben. Beschlüsse, 20 Abnahmekriterien und Umsetzungsgrenzen: [UI_UX_DECISIONS_RUNDE_14.md](UI_UX_DECISIONS_RUNDE_14.md).
+
+
 ## Verbindlicher Vorrang – UI/UX-Entscheidungsrunde 13 (21.10.2026)
 
 **UX-DEC-35 bis UX-DEC-39 sind für die von ihnen geregelten Navigations- und UI-Präferenzthemen die jüngsten vorrangigen Produktentscheidungen.** Sie ersetzen bei inhaltlichem Konflikt ältere UI/UX-Vorgaben, einschließlich Runden 9–12 (beispielsweise feste mobile Bottom-Bar-Belegung). Andere UX-Beschlüsse gelten weiter. Unverändert zwingend bleiben Authentifizierung, Mandantentrennung, serverseitige Berechtigungen/RLS, Datenschutz, Sicherheitsregeln und Freigabegates. Die verbindlichen Beschlüsse, 20 Abnahmekriterien und Umsetzungsgrenzen stehen in [UI_UX_DECISIONS_RUNDE_13.md](UI_UX_DECISIONS_RUNDE_13.md).
