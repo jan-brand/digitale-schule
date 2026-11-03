@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Platform, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, View, useWindowDimensions } from "react-native";
+import { useRouter } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PasswordField } from "@/components/ui/PasswordField";
@@ -23,6 +24,7 @@ const DESKTOP_BREAKPOINT = 1200;
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const { theme } = useTheme();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= DESKTOP_BREAKPOINT;
   const [step, setStep] = useState<"school" | "credentials">("school");
@@ -58,10 +60,24 @@ export default function LoginScreen() {
     }
   }
 
+  const subtitle =
+    step === "school"
+      ? "Gib den Code deiner Schule ein, um fortzufahren."
+      : `Angemeldet bei „${schoolSlug}“ – gib deinen Benutzernamen und dein Passwort ein.`;
+
   const form = (
     <>
       <Text variant="title" style={isDesktop && { marginLeft: theme.spacing.xl }}>
         Anmelden
+      </Text>
+      <Text
+        variant="body"
+        style={[
+          { opacity: 0.7, marginTop: theme.spacing.xs },
+          isDesktop && { marginLeft: theme.spacing.xl },
+        ]}
+      >
+        {subtitle}
       </Text>
       <View
         style={[
@@ -104,6 +120,15 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               errorMessage={error ?? undefined}
             />
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push("/recover")}
+              style={{ alignSelf: "flex-end" }}
+            >
+              <Text variant="caption" style={{ color: theme.colors.action }}>
+                Passwort vergessen?
+              </Text>
+            </Pressable>
             <Button label="Anmelden" onPress={handleSubmit} disabled={!canSubmit} loading={loading} />
           </>
         )}
@@ -112,7 +137,24 @@ export default function LoginScreen() {
   );
 
   if (!isDesktop) {
-    return <Screen title="Anmelden">{form}</Screen>;
+    // Mobile/tablet: same unchanged form as desktop, but centered in the
+    // viewport instead of pinned to the top — the previous layout left a
+    // large empty gap below a short form, which read as broken/unfinished.
+    // A small wordmark ties it to the desktop brand panel without adding
+    // the illustration weight a phone screen doesn't have room for.
+    return (
+      <Screen title="Anmelden">
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <Text
+            variant="title"
+            style={{ color: theme.colors.action, fontSize: 28, marginBottom: theme.spacing.xl }}
+          >
+            Campus
+          </Text>
+          {form}
+        </View>
+      </Screen>
+    );
   }
 
   // Desktop only: a branded split-screen frame around the unchanged form
@@ -130,6 +172,7 @@ export default function LoginScreen() {
                 borderRadius: theme.radius.card,
                 paddingVertical: theme.spacing.xl,
                 paddingHorizontal: theme.spacing.md,
+                paddingBottom: theme.spacing.lg,
                 maxWidth: 480,
                 width: "100%",
                 alignSelf: "center",
@@ -146,6 +189,19 @@ export default function LoginScreen() {
             ]}
           >
             {form}
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.accent,
+                marginTop: theme.spacing.lg,
+                marginLeft: theme.spacing.xl,
+                paddingTop: theme.spacing.md,
+              }}
+            >
+              <Text variant="caption" style={{ opacity: 0.6 }}>
+                Zugangsprobleme? Wende dich an die Administration deiner Schule.
+              </Text>
+            </View>
           </View>
         </View>
       </View>
