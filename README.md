@@ -889,6 +889,86 @@ HTTP-Basic-Auth – **kein** API-/DB-Endpunkt). Direkter Zugriff:
   native (iOS/Android) Zugänglichkeit wurde gar nicht geprüft (keine
   Simulator-/Geräte-Umgebung in dieser Sitzung).
 
+- **M19 (Einladungs-Historie, SCR-09): abgeschlossen, mit offener
+  Live-Prüfung.** Der in `doc/CAMPUS_IAM_ACCOUNT_LIFECYCLE_v0_4.md`
+  §4.3/§5 und ursprünglich in `doc/UI_UX_SPECIFICATION.md` SCR-09
+  skizzierte asynchrone Einladungs-Token-Flow (E-Mail mit Link, Status
+  „pending" bis zum Klick) wurde nie gebaut — ohne SMTP-Versand
+  (`EMAIL_PROVIDER=log` ist der einzige aktive Pfad) und mit dem
+  tatsächlich umgesetzten Benutzername/Passwort-Modell hätte er keinen
+  funktionierenden Zustellweg. Die seit `20261013220005_settings_audit.sql`
+  komplett ungenutzte `invitations`-Tabelle (kein Edge-Function- oder
+  Client-Code las/schrieb sie je — per Repo-weitem Grep bestätigt) wird
+  stattdessen als Append-only-Historie der echten, synchronen
+  Kontoerstellung wiederverwendet: `admin-invite-user` schreibt jetzt
+  pro Einladung eine bereits `'accepted'`-Zeile; eine neue additive FK
+  (`invitations_accepted_by_user_id_fkey` auf `school_memberships.user_id`,
+  seit dem P0-03-Hotfix UNIQUE) macht die entstandene Mitgliedschaft im
+  neuen `admin/invitations`-Screen embedbar. „Widerrufen" entfällt
+  bewusst (eine bereits akzeptierte Einladung lässt sich nicht
+  un-akzeptieren) — Sperren/Reaktivieren der Mitgliedschaft übernimmt
+  stattdessen die bereits bestehende `fn_update_membership_status`,
+  dieselbe Aktion wie in `admin/users.tsx`.
+
+  `typecheck`/`lint`/Unit-Tests grün; Spalten, Enum-Wert (`'accepted'`)
+  und FK-Pfad des neuen Inserts manuell gegen die tatsächlichen
+  Migrationen gegengeprüft. **Nicht geprüft**: ein echter Durchlauf
+  gegen eine laufende Supabase-Instanz (kein Docker in dieser Sitzung,
+  gleiche Einschränkung wie bei POC-09) — siehe `doc/ACCEPTANCE.md`
+  Gate 3.
+
+- **M20 (Einstellungen auf Widget-Pattern, P0-12): abgeschlossen, mit
+  offener WCAG-Nachprüfung.** `settings.tsx` nutzte bisher eine
+  freistehende Abschnittsliste statt des bereits für das Dashboard
+  beschlossenen Widget-Musters (`doc/design.md`, UX-DEC-17/25) — ein
+  zweites, abweichendes Muster für dieselbe Anforderung wäre ein
+  unbegründeter Bruch gewesen. Konzept vorab dokumentiert
+  (`doc/SETTINGS_WIDGETS_PLAN.md`), dann umgesetzt: `AccountWidget`/
+  `SecurityWidget` (S-01/S-02, Pflicht, ohne `WidgetEditControls` —
+  analog zu W-01 auf dem Dashboard, da Kontakt-E-Mail-Verifizierung und
+  Abmelden-Erreichbarkeit Compliance-/Sicherheitsanforderungen sind) und
+  `AppearanceWidget` (S-03, einzig personalisierbar, eigener
+  AsyncStorage-Key `campus.settingsWidgets.v1` getrennt vom
+  Dashboard-Layout-Key). Keine neue RLS-/Auth-/Schema-Änderung, nur
+  Präsentationsschicht. Dabei zusätzlich gefunden und behoben: `signOut`
+  rief `supabase.auth.signOut()` ohne `scope` auf (globaler Default) —
+  schlägt der Server-Roundtrip aus einem anderen Grund als 401/403/404
+  fehl (Netzwerk, Backend down), blieb der Nutzer angemeldet und der
+  „Abmelden"-Button wirkte funktionslos; auf `scope: "local"`
+  umgestellt, löscht die Session jetzt sofort geräteseitig.
+  `typecheck`/`lint` grün. **Nicht erneut geprüft**: die M18-WCAG-
+  Stichprobe für die neuen Widget-Controls — kein Browser/Simulator in
+  dieser Sitzung.
+
+- **M21 (Login-Desktop-Layout, P0-13): abgeschlossen, mit dokumentierter
+  Abweichung.** `TODO/login_layout_update.md` forderte links­bündige
+  Eingabefelder/Buttons mit Rand zur Fensterkante auf Desktop, Tablet/
+  Mobile unverändert, und ausdrücklich **keine** Änderung an Logik,
+  Ablauf oder UX-Verhalten des Login-Prozesses. Umgesetzt wurde ein
+  Breakpoint (`>= 1200px`) mit einem zweigeteilten Desktop-Layout
+  (Branding-Panel links, Formular rechts, linksbündig mit
+  `theme.spacing.xl`-Rand); Tablet/Mobile rendern weiterhin den
+  unveränderten einfachen `Screen`-Wrapper.
+
+  **Bei Review dieser Sitzung gefunden:** die Umsetzung führt zusätzlich
+  einen zweistufigen Formularablauf ein (Schule -> „Weiter" ->
+  Benutzername/Passwort -> „Anmelden") statt des bisherigen einstufigen
+  Formulars mit allen drei Feldern gleichzeitig — ein Verstoß gegen die
+  obige Vorgabe "keine Ablauf-/UX-Änderung". Dem Nutzer vorgelegt und
+  **bewusst als Abweichung bestätigt**, nicht zurückgebaut:
+  Validierungslogik (`isValidLoginInput`, `canSubmit`) und der
+  eigentliche `signIn`-Aufruf bleiben unverändert, nur die
+  Formularpräsentation ist zweistufig. Dokumentiert in
+  `TODO/login_layout_update.md`. Zusätzliche, kleinere Abweichung: die
+  neue Desktop-Karte nutzt einen Schlagschatten (`boxShadow`/
+  `shadowColor`/`elevation`), obwohl `doc/design.md` keine Schatten-/
+  Elevation-Tokens definiert — als bewusste, kleine Ausnahme belassen,
+  nicht separat zurückgebaut.
+
+  `typecheck`/`lint` grün. **Nicht erneut geprüft**: der M18-
+  Tastaturtest für den neuen zweistufigen Ablauf und das Branding-Panel
+  — kein Browser in dieser Sitzung.
+
 ## Sicherheit
 
 Niemals Service-Role-Keys oder andere privilegierte Geheimnisse im Frontend

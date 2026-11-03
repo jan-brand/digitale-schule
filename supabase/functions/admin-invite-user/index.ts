@@ -131,6 +131,29 @@ Deno.serve(async (req: Request) => {
 
   const { membership_id: membershipId, username } = finalizeData[0];
 
+  // History row for the new admin/invitations.tsx screen (M19). Written
+  // already 'accepted' — this flow creates the account synchronously,
+  // there is no real pending/token-email step to record (see this
+  // migration's own comment, 20261016000001_m19_invitation_lifecycle.sql,
+  // for why the originally-specified async token flow was never built).
+  // token_hash has no real secret behind it here, only a NOT NULL UNIQUE
+  // column from that original design — a random per-row value satisfies
+  // the constraint without implying a redeemable token exists.
+  const callerMembershipRows = await sql<{ id: string }[]>`
+    select id from public.school_memberships where user_id = ${callerUser.user.id} and school_id = ${schoolId}
+  `;
+  await sql`
+    insert into public.invitations (
+      school_id, invited_by_membership_id, invited_identity_hint, proposed_role_codes,
+      delivery_method, token_hash, status, expires_at, accepted_by_user_id, accepted_at
+    )
+    values (
+      ${schoolId}, ${callerMembershipRows[0]?.id ?? null}, ${`${firstName} ${lastName}`},
+      array[${roleCode}]::public.role_code[],
+      'direct_account_creation', ${crypto.randomUUID()}, 'accepted', now(), ${newUserId}, now()
+    )
+  `;
+
   // fn_assign_role runs its own, already-tested self-escalation /
   // principal-is-CLI-only / delegation checks for the chosen role.
   const { error: assignError } = await callerClient.rpc("fn_assign_role", {

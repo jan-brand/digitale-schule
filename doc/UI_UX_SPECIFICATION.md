@@ -66,7 +66,7 @@
 2. **Schule** (`/school`) – freigegebene Stamminformationen; Unterpunkte je Berechtigung.
 3. **Verwaltung** (`/admin`) – nur bei mindestens einer gültigen Verwaltungsberechtigung.
 4. **Profil & Einstellungen** (`/settings`) – alle angemeldeten Rollen.
-
+5. **Lade indikatoren** - Wenn Prozesse von der  Netzwerk-geschwindigkeit oder Bandbreite abhängig sind, sollte ein Ladesymbol oder ein sonsitger Indikator dafür festgelegt sein; dieser muss systemweit einheitlich sein.
 ### Admin-Unterpunkte nach Berechtigung
 - Mitglieder / Einladungen / CSV-Import.
 - Rollen und Zusatzrechte (geschützt; kritische Änderungen mit Pflichtbegründung).
@@ -141,7 +141,7 @@ Breakpoints sind nach visuellen und Accessibility-Tests anzupassen. Auf Tablet g
 | SCR-06 | `(app)/settings` | Profil, Theme, optionale E-Mail-Verifizierung, Passwort- und Session-Aktionen | Angemeldet |
 | SCR-07 | `(app)/admin/index` | Admin-Übersicht nur mit erlaubten Bereichen, Warnhinweise | Berechtigter Benutzer |
 | SCR-08 | `admin/members` | Suche/Filter, Status, erlaubte Aktionen; keine unnötigen privaten Daten | Admin/Delegation |
-| SCR-09 | `admin/invitations` | Einladung erstellen, widerrufen, Status, Ablauf | Berechtigt |
+| SCR-09 | `admin/invitations` | Verlauf der über „Mitglied einladen“ erstellten Konten mit dem aktuellen Status der jeweiligen Mitgliedschaft; Sperren/Reaktivieren statt Widerruf — abweichend vom hier ursprünglich skizzierten asynchronen Token-Verfahren, siehe `20261016000001_m19_invitation_lifecycle.sql` für die Begründung | Berechtigt |
 | SCR-10 | `admin/imports` | CSV wählen, Vorschau, Zeilenfehler, Duplikate, Bestätigung, Ergebnis | Berechtigt |
 | SCR-11 | `admin/permissions` | Rollen/Delegationen, Grenzen anzeigen, Pflichtbegründung, Auditbestätigung | Besonders berechtigt |
 | SCR-12 | `admin/school-years` | Liste, Anlage, Bearbeitung, aktive Periode | Berechtigt |

@@ -1,0 +1,46 @@
+-- Campus Foundation v0.1 — M19: invitation lifecycle screen (SCR-09,
+-- doc/UI_UX_SPECIFICATION.md), adapted to the account-creation model
+-- actually built, not the one originally sketched in
+-- doc/CAMPUS_IAM_ACCOUNT_LIFECYCLE_v0_4.md §4.3/§5.
+--
+-- That doc specifies a classic async flow: draft -> pending -> accepted,
+-- a hashed token emailed to the invitee, who clicks a link and activates
+-- the account themselves. The `invitations`/`school_invitations` table
+-- (20261013220005_settings_audit.sql) was built for exactly that shape
+-- and has sat completely unused ever since — no Edge Function or client
+-- code anywhere reads or writes it (confirmed by grepping the whole
+-- repo while auditing which planned features were never finished).
+--
+-- That flow doesn't fit what this project actually ended up building:
+-- GATE-AUTH's accepted PoC uses synthetic technical emails + username/
+-- password, not real email confirmation (doc/SECURITY_AUTH.md), and no
+-- SMTP provider is configured (EMAIL_PROVIDER=log is the only active
+-- path, supabase/functions/_shared/email.ts) — a "pending, awaiting
+-- email click" state would never actually resolve. The real
+-- admin-invite-user Edge Function instead creates the account
+-- synchronously and hands the admin a username + initial password to
+-- relay out-of-band (D-008/D-009).
+--
+-- Given that, this migration does NOT build the originally-specified
+-- token/expiry/accept flow — it would be dead infrastructure with no
+-- working delivery channel. Instead it repurposes the existing table as
+-- an append-only *history* of invitations issued through the real
+-- synchronous flow, each row written already in its resolved
+-- 'accepted' state (see admin-invite-user/index.ts). "Revoking" an
+-- already-accepted invitation doesn't apply here (you can't un-accept
+-- something that was never pending) — the lifecycle doc's own rule
+-- ("Aktiviertes Mitglied nicht allein per Invite-Revoke sperren") is
+-- honored by *not* repurposing invitation-revoke for that; suspending
+-- the resulting membership is already a separate, existing action
+-- (fn_update_membership_status) that the new admin/invitations.tsx
+-- screen surfaces instead.
+--
+-- New FK to make the resulting membership embeddable from this history
+-- list (same additive-FK-for-PostgREST-embedding pattern as
+-- 20261015000001_m13_postgrest_profile_embed_fk.sql): accepted_by_user_id
+-- already references auth.users(id); school_memberships.user_id is
+-- UNIQUE since the P0-03 security hotfix (one account = one school,
+-- D-004), so this is a valid, non-ambiguous second FK target.
+alter table public.invitations
+  add constraint invitations_accepted_by_user_id_fkey
+  foreign key (accepted_by_user_id) references public.school_memberships (user_id);
